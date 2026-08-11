@@ -37,15 +37,16 @@ struct Timer {
 };
 
 // ---------------------------------------------------------------------------
-// 비교 헬퍼 — 아래 두 함수는 같은 모양의 메시지를 찍는다.
+// 비교 헬퍼 — 아래 세 함수는 같은 모양의 메시지를 찍는다.
 // 랩이 바뀌어도 학생이 보는 형식은 동일하다:
 //
 //     첫 불일치: [12345]  기대 2.769316  실제 0.000000  (오차/기준크기 1.470e+00)
 //     첫 불일치: [12345]  기대 200  실제 187
+//     불일치: 기대 33554432.000000  실제 33554416.000000  (상대오차 4.768e-07)
 //
-// 위치는 원소 개수 기준의 1차원 인덱스다. 2차원 자료라면 행 = i/N, 열 = i%N.
-// 두 함수 모두 a가 기대값(참조), b가 실제값(검사 대상)이고,
-// 같으면 1, 다르면 첫 불일치를 출력하고 0을 반환한다.
+// 배열 비교에서 위치는 원소 개수 기준의 1차원 인덱스다.
+// 2차원 자료라면 행 = i/N, 열 = i%N.
+// 셋 다 같으면 1, 다르면 불일치를 출력하고 0을 반환한다.
 // ---------------------------------------------------------------------------
 
 // float 배열을 상대오차 tol 이내에서 비교한다.
@@ -79,6 +80,52 @@ static inline int compare_bytes(const unsigned char* a, const unsigned char* b, 
         }
     }
     return 1;
+}
+
+// 스칼라 하나를 상대오차 tol 이내에서 비교한다. 리덕션처럼 출력이 값 하나일 때 쓴다.
+// 참조값과 tol이 double인 것은 의도한 것이다. 원소 수천만 개를 float로 누적하면
+// 합 자체가 뭉개져서 참조값 구실을 못 한다. GPU 쪽 결과(got)는 float 그대로 받는다.
+//
+// 인자 순서가 위의 두 배열 함수와 반대다(got이 먼저, 참조가 나중).
+static inline int compare_scalar(float got, double ref, double tol) {
+    double diff = fabs((double)got - ref);
+    // 참조값이 0에 가까우면 상대오차가 의미를 잃는다. 그때만 절대오차로 본다.
+    double rel  = (fabs(ref) > 1e-12) ? diff/fabs(ref) : diff;
+    if (rel > tol || isnan((double)got)) {
+        printf("  불일치: 기대 %.6f  실제 %.6f  (상대오차 %.3e)\n", ref, (double)got, rel);
+        return 0;
+    }
+    return 1;
+}
+
+// ---------------------------------------------------------------------------
+// 이론 메모리 대역폭(GB/s). 실측 대역폭의 달성률을 따질 때 쓴다.
+//
+// 값을 하드코딩하지 않는다. 개발 PC와 실습실 GPU가 다르기 때문이다.
+// 현재 디바이스의 메모리 클럭과 버스 폭을 조회해 계산한다.
+//
+// cudaDeviceProp::memoryClockRate 는 CUDA 13에서 제거되어 그 필드를 쓰면
+// 컴파일조차 되지 않는다. 그래서 버전을 타지 않는 cudaDeviceGetAttribute 를 쓴다.
+// 값을 얻지 못하면 0을 돌려주므로, 호출부는 0이면 달성률 출력을 건너뛰면 된다.
+// ---------------------------------------------------------------------------
+static inline float theoretical_bandwidth_GBps(void) {
+    int device = 0;
+    if (cudaGetDevice(&device) != cudaSuccess) {
+        cudaGetLastError();                       // 오류 상태를 남기지 않는다
+        return 0.0f;
+    }
+
+    int clock_kHz = 0, bus_bits = 0;
+    cudaError_t e1 = cudaDeviceGetAttribute(&clock_kHz, cudaDevAttrMemoryClockRate, device);
+    cudaError_t e2 = cudaDeviceGetAttribute(&bus_bits, cudaDevAttrGlobalMemoryBusWidth, device);
+    if (e1 != cudaSuccess || e2 != cudaSuccess || clock_kHz <= 0 || bus_bits <= 0) {
+        cudaGetLastError();
+        return 0.0f;
+    }
+
+    // GDDR은 클럭 한 번에 두 번 전송한다(DDR).
+    //   kHz * 2 * (버스폭 bit / 8) / 1e6  =  GB/s
+    return 2.0f*clock_kHz*(bus_bits/8.0f)/1.0e6f;
 }
 
 #endif // COMMON_CUH

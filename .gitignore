@@ -7,3 +7,6 @@ blur
 blur_naive
 *.pgm
 *.swp
+reduce
+assoc
+ulp
