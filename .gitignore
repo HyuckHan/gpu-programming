@@ -3,3 +3,7 @@ matmul
 broken_syncthreads
 claude_sessoin
 slides/
+blur
+blur_naive
+*.pgm
+*.swp
