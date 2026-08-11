@@ -15,3 +15,6 @@ vecadd_naive
 divergence
 labs/w04-occupancy/vecadd.cu
 labs/w04-occupancy/common.cuh
+warmup
+loop_order
+hello

@@ -67,12 +67,13 @@ static void init_matrix(float* M, unsigned int N, unsigned int seed) {
 }
 
 // CPU 참조 행렬곱. 변수명은 위 mm_kernel과 같다.
+// 1주차 워밍업(w01-c-warmup/warmup.c)에서 학생이 직접 작성한 함수와 같은 것이다.
 // O(N^3)이라 N이 커지면 매우 느리다. 작은 N에서만 쓴다.
-static void mm_cpu(const float* A, const float* B, float* C, unsigned int N) {
-    for (unsigned int row = 0; row < N; ++row) {
-        for (unsigned int col = 0; col < N; ++col) {
+static void mat_mul(const float* A, const float* B, float* C, int N) {
+    for (int row = 0; row < N; ++row) {
+        for (int col = 0; col < N; ++col) {
             float sum = 0.0f;
-            for (unsigned int i = 0; i < N; ++i) {
+            for (int i = 0; i < N; ++i) {
                 sum += A[row*N + i]*B[i*N + col];
             }
             C[row*N + col] = sum;
@@ -159,7 +160,7 @@ int main(int argc, char** argv) {
     // N이 작을 때만 CPU 참조까지 확인한다 (O(N^3)이라 크면 너무 느리다)
     if (ok && N <= 1024) {
         float* C_ref = (float*)malloc(bytes);
-        mm_cpu(A, B, C_ref, N);
+        mat_mul(A, B, C_ref, N);
         ok = compare_float(C_ref, C_tiled, count, 1e-3f);
         printf("CPU 참조 대조: %s\n", ok ? "일치" : "불일치");
         free(C_ref);
