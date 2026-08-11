@@ -19,7 +19,7 @@ DEPS    := pgm.h ../../common/common.cuh
 # make run 이 쓸 기본 인자.  make run W=256 H=256 B=3  처럼 바꿀 수 있다.
 W ?= 512
 H ?= 512
-B ?= 8
+B ?= 1
 
 # 기본 타깃은 blur 하나뿐이다.
 # blur_naive 는 실습 순서에 따라 학생이 직접 `make blur_naive` 로 빌드한다.

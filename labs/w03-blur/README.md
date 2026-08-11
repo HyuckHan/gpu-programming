@@ -17,7 +17,7 @@ CPU 참조와 무엇이 다른지 기록하라.
 ### 2. `compute-sanitizer`로 원인을 찾는다
 
 ```
-compute-sanitizer ./blur_naive 256 256 8
+compute-sanitizer ./blur_naive 256 256 1
 ```
 
 `compute-sanitizer`는 CUDA 툴킷에 함께 들어 있다. **따로 설치할 필요가 없다.**
@@ -49,11 +49,11 @@ make test
 ```
 make            # blur 만 빌드한다
 make blur_naive # 관찰용은 1단계에서 직접 빌드한다
-make run        # ./blur 512 512 8 과 같다
+make run        # ./blur 512 512 1 과 같다
 make clean
 ```
 
-인자는 `./blur <width> <height> <BLUR_SIZE>` 형태이고, 생략하면 `512 512 8`이다.
+인자는 `./blur <width> <height> <BLUR_SIZE>` 형태이고, 생략하면 `512 512 1`이다.
 `make run W=256 H=256 B=3` 처럼 Makefile 변수로 넘겨도 된다.
 nvcc 플래그는 Makefile이 관리하므로 직접 칠 일은 없다.
 
@@ -66,6 +66,22 @@ nvcc 플래그는 Makefile이 관리하므로 직접 칠 일은 없다.
 사선 무늬를 `width x height` 크기로 만들어 쓴다. `input.pgm`이 있으면 크기 인자는
 무시된다. 결과는 항상 `out.pgm`으로 저장된다.
 
+다른 그림으로 시험해 보고 싶으면 만들어 쓰면 된다:
+
+```
+python3 make_input.py            # 512x512 input.pgm 을 만든다
+python3 make_input.py 300 200
+```
+
+무늬가 네 변에 모두 걸치도록 그린다. 경계 처리 버그는 테두리 근처만 바꾸므로,
+그 자리가 평평한 색이면 버그가 있어도 드러나지 않기 때문이다.
+본인 사진을 쓰려면 **8비트 회색조 P5**로 변환해야 한다
+(`convert photo.jpg -colorspace Gray -depth 8 input.pgm`).
+16비트나 P2(ASCII) 형식은 읽지 못하며, 그 경우 경고를 찍고 합성 이미지로 넘어간다.
+
+**`verify.py`를 돌릴 때는 `input.pgm`을 옮겨 두어라.** 크기 인자가 무시되면
+점검이 성립하지 않으므로 스크립트가 실행을 거부한다.
+
 `blur`와 `blur_naive`가 같은 `out.pgm`에 쓰므로, 나중에 실행한 쪽이 덮어쓴다.
 둘을 나란히 비교하려면 중간에 파일 이름을 바꿔 두어라.
 
@@ -75,9 +91,9 @@ nvcc 플래그는 Makefile이 관리하므로 직접 칠 일은 없다.
 make test       # python3 verify.py 와 같다
 ```
 
-`verify.py`가 빌드부터 네 가지 크기 실행까지 자동으로 돌린다. 정사각이 아닌 크기와
-블록(16x16)으로 나누어떨어지지 않는 크기가 함께 들어 있다. **제출 전에 반드시
-통과시켜라.**
+`verify.py`가 빌드부터 다섯 가지 조합 실행까지 자동으로 돌린다. 정사각이 아닌 크기,
+블록(16x16)으로 나누어떨어지지 않는 크기, 그리고 창이 이미지보다 커서 모든 픽셀이
+잘려 나가는 경우가 함께 들어 있다. **제출 전에 반드시 통과시켜라.**
 
 프로그램은 GPU 결과를 CPU 참조 구현과 대조한다. 정수 연산이므로 허용오차가 없다.
 **한 바이트라도 다르면 실패다.** 불일치 위치는 1차원 인덱스로 나오며,
@@ -99,7 +115,7 @@ make test       # python3 verify.py 와 같다
   - 2단계 `compute-sanitizer` 출력에서 읽어낸 것:
     어느 줄인가, 어느 스레드인가, 이미지의 어느 위치를 담당하는 스레드인가
   - 왜 하필 그 스레드에서 문제가 생기는가 (`inRow`, `inCol`의 값을 들어 설명)
-  - `BLUR_SIZE`를 3, 8, 16으로 바꾸면 잘못된 접근의 범위가 어떻게 달라지는가
+  - `BLUR_SIZE`를 1, 4, 16으로 바꾸면 잘못된 접근의 범위가 어떻게 달라지는가
 
 ## 배점 (총 5%)
 

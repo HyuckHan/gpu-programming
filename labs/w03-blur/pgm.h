@@ -20,6 +20,15 @@ static int pgm_next_int(FILE* f, unsigned int* out) {
     return fscanf(f, "%u", out) == 1;
 }
 
+// 파일이 열리기만 하는지 확인한다.
+// read_pgm이 NULL을 준 이유가 "파일이 없어서"인지 "형식이 틀려서"인지 가리는 데 쓴다.
+static int pgm_file_exists(const char* path) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
 // P5 파일을 읽어 픽셀 배열을 돌려준다. 실패하면 NULL.
 // 성공하면 width, height에 이미지 크기가 담긴다. 호출한 쪽이 free 해야 한다.
 static unsigned char* read_pgm(const char* path, unsigned int* width, unsigned int* height) {

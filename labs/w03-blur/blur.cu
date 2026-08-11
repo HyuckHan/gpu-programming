@@ -71,14 +71,14 @@ int main(int argc, char** argv) {
 
     unsigned int width  = (argc > 1) ? (unsigned int)atoi(argv[1]) : 512;
     unsigned int height = (argc > 2) ? (unsigned int)atoi(argv[2]) : 512;
-    int BLUR_SIZE       = (argc > 3) ? atoi(argv[3]) : 8;
+    int BLUR_SIZE       = (argc > 3) ? atoi(argv[3]) : 1;
 
     if (width == 0 || height == 0) {
         fprintf(stderr, "width와 height는 1 이상이어야 한다\n");
         return 1;
     }
-    if (BLUR_SIZE < 0) {
-        fprintf(stderr, "BLUR_SIZE는 0 이상이어야 한다 (받은 값: %d)\n", BLUR_SIZE);
+    if (BLUR_SIZE < 1) {
+        fprintf(stderr, "BLUR_SIZE는 1 이상이어야 한다 (받은 값: %d)\n", BLUR_SIZE);
         return 1;
     }
 
@@ -87,6 +87,11 @@ int main(int argc, char** argv) {
     if (image) {
         printf("입력: input.pgm (%u x %u)\n", width, height);
     } else {
+        // 파일이 있는데도 못 읽었다면 형식 문제다. 조용히 넘어가지 않는다.
+        if (pgm_file_exists("input.pgm")) {
+            fprintf(stderr, "input.pgm을 읽을 수 없다. 8비트 회색조 P5(PGM)만 지원한다.\n");
+            fprintf(stderr, "합성 이미지로 대신 진행한다.\n");
+        }
         image = (unsigned char*)malloc((size_t)width*height);
         make_test_image(image, width, height);
         printf("입력: 합성 사선 무늬 (%u x %u)\n", width, height);

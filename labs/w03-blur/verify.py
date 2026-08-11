@@ -15,8 +15,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 # (width, height, BLUR_SIZE)
-# 정사각이 아닌 크기와 블록(16x16)으로 나누어떨어지지 않는 크기를 함께 넣었다.
-CONFIGS = [(512, 512, 8), (256, 256, 3), (300, 200, 5), (64, 64, 0)]
+# 정사각이 아닌 크기, 블록(16x16)으로 나누어떨어지지 않는 크기,
+# 그리고 창이 이미지보다 큰 경우(16x16, BLUR_SIZE=20)를 함께 넣었다.
+CONFIGS = [(512, 512, 1), (256, 256, 3), (300, 200, 5), (128, 128, 8), (16, 16, 20)]
 
 
 def run(cmd, timeout=300):
@@ -44,6 +45,7 @@ def main():
 
     print("\n[2/2] 실행")
     failed = []
+    crashed = False      # 결과가 틀린 것과 커널이 죽은 것은 원인이 다르다
     for width, height, blur_size in CONFIGS:
         label = f"  {width}x{height}  BLUR_SIZE={blur_size:<3}"
         try:
@@ -58,6 +60,7 @@ def main():
             print(f"{label} 실행 실패 (rc={r.returncode})")
             print("   ", (r.stderr.strip() or r.stdout.strip())[:400])
             failed.append((width, height, blur_size))
+            crashed = True
             continue
 
         print(f"{label} 검증 {m.group(1)}")
@@ -77,6 +80,12 @@ def main():
               + ", ".join(f"({w}x{h}, B={b})" for w, h, b in failed))
         if "TODO" in (HERE / "blur.cu").read_text(encoding="utf-8"):
             print("blur.cu에 아직 TODO가 남아 있다. 안쪽 루프를 채웠는지 확인하라.")
+        elif crashed:
+            # 값이 틀린 게 아니라 커널 자체가 중단된 경우다. 원인이 다르다.
+            print("커널이 실행 도중 중단됐다. 이미지 밖을 읽고 있다는 뜻이다.")
+            print("경계 검사 없이 average에 더하고 있지는 않은지 확인하고,")
+            print("어느 줄인지는 다음으로 확인하라:")
+            print("    compute-sanitizer ./blur 64 64 1")
         else:
             print("첫 불일치가 가장자리(행이나 열이 0에 가까운 곳)에 몰려 있다면")
             print("경계 조건 네 가지 중 빠뜨린 것이 없는지 확인하라.")
