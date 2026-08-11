@@ -51,6 +51,7 @@ make            # blur 만 빌드한다
 make blur_naive # 관찰용은 1단계에서 직접 빌드한다
 make run        # ./blur 512 512 1 과 같다
 make clean
+make help       # 쓸 수 있는 명령과 인자를 모두 보여준다
 ```
 
 인자는 `./blur <width> <height> <BLUR_SIZE>` 형태이고, 생략하면 `512 512 1`이다.

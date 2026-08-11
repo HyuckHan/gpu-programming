@@ -34,4 +34,18 @@ test: matmul
 clean:
 	rm -f $(TARGETS)
 
-.PHONY: all run test clean
+help:
+	@echo "6주차 — 공유 메모리 타일링 행렬곱"
+	@echo ""
+	@echo "  make                     matmul 과 broken_syncthreads 를 빌드한다"
+	@echo "  make matmul              스켈레톤(skeleton.cu)을 빌드한다"
+	@echo "  make broken_syncthreads  관찰용을 빌드한다"
+	@echo "  make run                 ./matmul $(N) $(TILE) 실행"
+	@echo "  make test                verify.py 로 자체 점검한다"
+	@echo "  make clean               빌드 산출물을 지운다"
+	@echo ""
+	@echo "실행 인자   ./matmul <N> <TILE_DIM>     기본값 4096 32"
+	@echo "            TILE_DIM 은 8, 16, 32 중 하나. N 은 그 배수여야 한다"
+	@echo "인자 바꾸기 make run N=1024 TILE=16"
+
+.PHONY: all run test clean help

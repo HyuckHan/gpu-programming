@@ -37,4 +37,18 @@ test: blur
 clean:
 	rm -f $(TARGETS) out.pgm
 
-.PHONY: all run test clean
+help:
+	@echo "3주차 — blur와 경계 조건"
+	@echo ""
+	@echo "  make              blur 를 빌드한다"
+	@echo "  make blur_naive   관찰용(슬라이드 17)을 빌드한다"
+	@echo "  make run          ./blur $(W) $(H) $(B) 실행"
+	@echo "  make test         verify.py 로 자체 점검한다"
+	@echo "  make clean        빌드 산출물과 out.pgm 을 지운다"
+	@echo ""
+	@echo "실행 인자   ./blur <width> <height> <BLUR_SIZE>   기본값 512 512 1"
+	@echo "            BLUR_SIZE 는 1 이상"
+	@echo "인자 바꾸기 make run W=256 H=256 B=3"
+	@echo "입력 이미지 python3 make_input.py 로 input.pgm 을 만들 수 있다"
+
+.PHONY: all run test clean help

@@ -21,6 +21,7 @@ shared memory 선언 두 줄도 그대로 두면 된다.
 ```
 make            # matmul, broken_syncthreads 둘 다 빌드
 make run        # ./matmul 4096 32 과 같다
+make help       # 쓸 수 있는 명령과 인자를 모두 보여준다
 ```
 
 인자는 `./matmul <N> <TILE_DIM>` 형태다. TILE_DIM은 8, 16, 32 중 하나이고
