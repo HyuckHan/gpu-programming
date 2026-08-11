@@ -56,6 +56,30 @@ __global__ void mm_tiled_kernel(float* A, float* B, float* C, unsigned int N) {
 // 호스트 코드 (완성)
 // ---------------------------------------------------------------------------
 
+// N x N 행렬을 -0.5 ~ 0.5 난수로 채운다.
+// 시드가 같으면 어느 PC에서 몇 번을 돌려도 같은 값이 나온다(재현 가능).
+static void init_matrix(float* M, unsigned int N, unsigned int seed) {
+    unsigned int s = seed;
+    for (unsigned int i = 0; i < N*N; ++i) {
+        s = s*1664525u + 1013904223u;                     // 선형 합동 생성기
+        M[i] = (float)(s >> 16)/65536.0f - 0.5f;
+    }
+}
+
+// CPU 참조 행렬곱. 변수명은 위 mm_kernel과 같다.
+// O(N^3)이라 N이 커지면 매우 느리다. 작은 N에서만 쓴다.
+static void mm_cpu(const float* A, const float* B, float* C, unsigned int N) {
+    for (unsigned int row = 0; row < N; ++row) {
+        for (unsigned int col = 0; col < N; ++col) {
+            float sum = 0.0f;
+            for (unsigned int i = 0; i < N; ++i) {
+                sum += A[row*N + i]*B[i*N + col];
+            }
+            C[row*N + col] = sum;
+        }
+    }
+}
+
 // 런타임에 받은 tile_dim 값으로 알맞은 템플릿 커널을 부른다.
 static void launch_tiled(unsigned int tile_dim, dim3 grid, dim3 block,
                          float* A_d, float* B_d, float* C_d, unsigned int N) {
@@ -127,14 +151,16 @@ int main(int argc, char** argv) {
     float ms_tiled = timer.stop();
     CUDA_CHECK(cudaMemcpy(C_tiled, C_d, bytes, cudaMemcpyDeviceToHost));
 
-    // 정확성 — tiled를 naive와 비교한다
-    int ok = compare_matrices(C_naive, C_tiled, N, 1e-3f);
+    // 정확성 — tiled를 naive와 비교한다.
+    // 위치는 1차원 인덱스로 나온다. 행 = i/N, 열 = i%N 으로 읽으면 된다.
+    size_t count = (size_t)N*N;
+    int ok = compare_float(C_naive, C_tiled, count, 1e-3f);
 
     // N이 작을 때만 CPU 참조까지 확인한다 (O(N^3)이라 크면 너무 느리다)
     if (ok && N <= 1024) {
         float* C_ref = (float*)malloc(bytes);
         mm_cpu(A, B, C_ref, N);
-        ok = compare_matrices(C_ref, C_tiled, N, 1e-3f);
+        ok = compare_float(C_ref, C_tiled, count, 1e-3f);
         printf("CPU 참조 대조: %s\n", ok ? "일치" : "불일치");
         free(C_ref);
     }

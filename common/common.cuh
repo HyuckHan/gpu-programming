@@ -1,5 +1,6 @@
 // GPU 프로그래밍 실습 공용 하니스 — 모든 랩이 이 파일 하나를 공유한다.
-// 외부 헤더 의존 없음. 표준 라이브러리와 CUDA 런타임만 쓴다.
+// 여기에는 랩 공통 인프라만 둔다. CPU 참조 구현, 데이터 생성, 인자 파싱은
+// 랩마다 자료형과 문제 구조가 달라서 각 랩의 .cu 안에 둔다.
 #ifndef COMMON_CUH
 #define COMMON_CUH
 
@@ -35,49 +36,45 @@ struct Timer {
     }
 };
 
-// N x N 행렬을 -0.5 ~ 0.5 난수로 채운다.
-// 시드가 같으면 어느 PC에서 몇 번을 돌려도 같은 값이 나온다(재현 가능).
-static inline void init_matrix(float* M, unsigned int N, unsigned int seed) {
-    unsigned int s = seed;
-    for (unsigned int i = 0; i < N*N; ++i) {
-        s = s*1664525u + 1013904223u;                     // 선형 합동 생성기
-        M[i] = (float)(s >> 16)/65536.0f - 0.5f;
-    }
-}
-
-// CPU 참조 행렬곱. 변수명은 슬라이드의 mm_kernel과 같다.
-// O(N^3)이라 N이 커지면 매우 느리다. 작은 N에서만 쓸 것.
-static inline void mm_cpu(const float* A, const float* B, float* C, unsigned int N) {
-    for (unsigned int row = 0; row < N; ++row) {
-        for (unsigned int col = 0; col < N; ++col) {
-            float sum = 0.0f;
-            for (unsigned int i = 0; i < N; ++i) {
-                sum += A[row*N + i]*B[i*N + col];
-            }
-            C[row*N + col] = sum;
-        }
-    }
-}
-
-// ref와 test를 상대오차 tol 이내에서 비교한다.
-// 같으면 1, 다르면 첫 불일치 위치를 출력하고 0을 반환한다.
+// ---------------------------------------------------------------------------
+// 비교 헬퍼 — 아래 두 함수는 같은 모양의 메시지를 찍는다.
+// 랩이 바뀌어도 학생이 보는 형식은 동일하다:
 //
-// 오차를 원소값 자기 자신으로 나누면 안 된다. 행렬곱 결과에는 덧셈이 서로
-// 상쇄되어 0에 가까워진 원소가 섞여 있고, 그런 원소는 절대오차가 1e-7 수준이어도
-// 상대오차가 커 보인다. 그래서 행렬 전체의 대표 크기(RMS)를 기준으로 나눈다.
-static inline int compare_matrices(const float* ref, const float* test,
-                                   unsigned int N, float tol) {
+//     첫 불일치: [12345]  기대 2.769316  실제 0.000000  (오차/기준크기 1.470e+00)
+//     첫 불일치: [12345]  기대 200  실제 187
+//
+// 위치는 원소 개수 기준의 1차원 인덱스다. 2차원 자료라면 행 = i/N, 열 = i%N.
+// 두 함수 모두 a가 기대값(참조), b가 실제값(검사 대상)이고,
+// 같으면 1, 다르면 첫 불일치를 출력하고 0을 반환한다.
+// ---------------------------------------------------------------------------
+
+// float 배열을 상대오차 tol 이내에서 비교한다.
+static inline int compare_float(const float* a, const float* b, size_t n, float tol) {
+    // 오차를 원소값 자기 자신으로 나누면 안 된다. 덧셈이 서로 상쇄되어 0에
+    // 가까워진 원소는 절대오차가 1e-7 수준이어도 상대오차가 커 보인다.
+    // 그래서 배열 전체의 대표 크기(RMS)를 기준으로 나눈다.
     double sq = 0.0;   // 원소가 수천만 개라 float로 누적하면 합 자체가 부정확해진다.
-    for (unsigned int i = 0; i < N*N; ++i) sq += (double)ref[i]*ref[i];
-    float scale = (float)sqrt(sq/((double)N*N));
+    for (size_t i = 0; i < n; ++i) sq += (double)a[i]*a[i];
+    float scale = (float)sqrt(sq/(double)n);
     if (scale < 1e-6f) scale = 1e-6f;
 
-    for (unsigned int i = 0; i < N*N; ++i) {
-        float diff = fabsf(ref[i] - test[i]);
-        float rel  = diff/scale;
-        if (rel > tol || isnan(test[i])) {
-            printf("  첫 불일치: C[%u][%u]  기대 %.6f  실제 %.6f  (오차/기준크기 %.3e)\n",
-                   i/N, i%N, ref[i], test[i], rel);
+    for (size_t i = 0; i < n; ++i) {
+        float rel = fabsf(a[i] - b[i])/scale;
+        if (rel > tol || isnan(b[i])) {
+            printf("  첫 불일치: [%zu]  기대 %.6f  실제 %.6f  (오차/기준크기 %.3e)\n",
+                   i, a[i], b[i], rel);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// unsigned char 배열을 정확일치로 비교한다.
+// 정수 연산 커널(blur, histogram)은 허용오차를 두지 않는다.
+static inline int compare_bytes(const unsigned char* a, const unsigned char* b, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        if (a[i] != b[i]) {
+            printf("  첫 불일치: [%zu]  기대 %u  실제 %u\n", i, a[i], b[i]);
             return 0;
         }
     }

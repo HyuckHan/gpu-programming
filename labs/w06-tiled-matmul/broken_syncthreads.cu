@@ -56,6 +56,16 @@ __global__ void mm_tiled_kernel(float* A, float* B, float* C, unsigned int N) {
 // 호스트 코드
 // ---------------------------------------------------------------------------
 
+// N x N 행렬을 -0.5 ~ 0.5 난수로 채운다.
+// 시드가 같으면 어느 PC에서 몇 번을 돌려도 같은 값이 나온다(재현 가능).
+static void init_matrix(float* M, unsigned int N, unsigned int seed) {
+    unsigned int s = seed;
+    for (unsigned int i = 0; i < N*N; ++i) {
+        s = s*1664525u + 1013904223u;                     // 선형 합동 생성기
+        M[i] = (float)(s >> 16)/65536.0f - 0.5f;
+    }
+}
+
 static void launch_tiled(unsigned int tile_dim, dim3 grid, dim3 block,
                          float* A_d, float* B_d, float* C_d, unsigned int N) {
     switch (tile_dim) {
@@ -122,7 +132,7 @@ int main(int argc, char** argv) {
     float ms_tiled = timer.stop();
     CUDA_CHECK(cudaMemcpy(C_tiled, C_d, bytes, cudaMemcpyDeviceToHost));
 
-    int ok = compare_matrices(C_naive, C_tiled, N, 1e-3f);
+    int ok = compare_float(C_naive, C_tiled, (size_t)N*N, 1e-3f);
 
     double gflop = 2.0*N*N*N/1e9;
     printf("naive: %8.3f ms  (%7.1f GFLOP/s)\n", ms_naive, gflop/(ms_naive/1e3));
