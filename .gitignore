@@ -10,3 +10,5 @@ blur_naive
 reduce
 assoc
 ulp
+vecadd
+vecadd_naive
