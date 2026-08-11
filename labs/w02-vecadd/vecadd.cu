@@ -102,7 +102,31 @@ static void print_occupancy(unsigned int numThreadsPerBlock) {
            numThreadsPerBlock, blocksPerSm, 100.0*activeWarps/maxWarps);
 }
 
+// --info 로 부르면 이 GPU의 하드웨어 한계만 찍고 끝낸다.
+// 4주차 실습에서 이 값들을 받아적어 occupancy를 손으로 계산한다.
+// 수치를 하드코딩하지 않는다. 실행 중인 GPU에 직접 물어본다.
+static void print_device_info(void) {
+    int device = 0;
+    cudaDeviceProp prop;
+    CUDA_CHECK(cudaGetDevice(&device));
+    CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+
+    printf("GPU                   : %s (compute capability %d.%d)\n",
+           prop.name, prop.major, prop.minor);
+    printf("SM 개수                : %d\n", prop.multiProcessorCount);
+    printf("워프 크기              : %d\n", prop.warpSize);
+    printf("SM당 최대 스레드 수    : %d\n", prop.maxThreadsPerMultiProcessor);
+    printf("SM당 최대 블록 수      : %d\n", prop.maxBlocksPerMultiProcessor);
+    printf("SM당 최대 워프 수      : %d\n", prop.maxThreadsPerMultiProcessor/prop.warpSize);
+    printf("블록당 최대 스레드 수  : %d\n", prop.maxThreadsPerBlock);
+}
+
 int main(int argc, char** argv) {
+
+    if (argc > 1 && strcmp(argv[1], "--info") == 0) {
+        print_device_info();
+        return 0;
+    }
 
     int          N                   = (argc > 1) ? atoi(argv[1]) : 9999999;
     unsigned int numThreadsPerBlock  = (argc > 2) ? (unsigned int)atoi(argv[2]) : 256;
