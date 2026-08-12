@@ -22,3 +22,4 @@ conv_const
 conv_global
 labs/lab09-convolution/pgm.h
 labs/lab09-convolution/common.cuh
+histogram
