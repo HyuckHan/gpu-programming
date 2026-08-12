@@ -30,7 +30,7 @@ def shared_result(out):
 
 def main():
     print("=" * 60)
-    print("12주차 리덕션 — 자체 점검 (필수 과제: shared)")
+    print("리덕션 — 자체 점검 (필수 과제: shared)")
     print("=" * 60)
 
     print("\n[1/2] 빌드")
