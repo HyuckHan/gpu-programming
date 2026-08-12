@@ -18,3 +18,7 @@ labs/w04-occupancy/common.cuh
 warmup
 loop_order
 hello
+conv_const
+conv_global
+labs/lab09-convolution/pgm.h
+labs/lab09-convolution/common.cuh
