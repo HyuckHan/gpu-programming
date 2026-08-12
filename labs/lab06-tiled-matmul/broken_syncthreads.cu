@@ -89,6 +89,11 @@ int main(int argc, char** argv) {
         fprintf(stderr, "N은 TILE_DIM의 배수여야 한다 (N=%u, TILE_DIM=%u)\n", N, TILE_DIM);
         return 1;
     }
+    // 기준선 naive가 16x16 고정이므로 N은 16의 배수이기도 해야 한다.
+    if (N % 16 != 0) {
+        fprintf(stderr, "N은 16의 배수여야 한다 (기준선 naive가 16x16 고정이다, N=%u)\n", N);
+        return 1;
+    }
     if (N > 8192) {
         fprintf(stderr, "N은 8192 이하로 한다 (VRAM 8GB)\n");
         return 1;
@@ -116,11 +121,16 @@ int main(int argc, char** argv) {
     dim3 grid(N/TILE_DIM, N/TILE_DIM);
     Timer timer;
 
-    mm_kernel<<<grid, block>>>(A_d, B_d, C_d, N);
+    // 기준선 naive는 TILE_DIM과 무관하게 항상 16x16으로 돌린다.
+    // TILE_DIM을 바꿀 때 기준선까지 같이 움직이면 배속을 해석할 수 없다.
+    dim3 block_naive(16, 16);
+    dim3 grid_naive(N/16, N/16);
+
+    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
     timer.start();
-    mm_kernel<<<grid, block>>>(A_d, B_d, C_d, N);
+    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
     float ms_naive = timer.stop();
     CUDA_CHECK(cudaMemcpy(C_naive, C_d, bytes, cudaMemcpyDeviceToHost));
 
