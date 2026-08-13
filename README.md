@@ -45,26 +45,63 @@ lab13 을 나중에 넣게 되면 이 숫자를 다시 맞춰야 한다.
 | `extracted/` | 강의 덱에서 뽑아낸 코드 조각. 랩 코드의 변수명 기준 |
 | `extract_code.py` | pptx 에서 코드를 추출하는 스크립트 |
 | `slides/` | 강의 덱. 제3자 자료라 추적하지 않는다 |
-| `solutions/` | D 유형 과제 정답. 이 저장소에 두지 않는다 |
+| `solutions/` | 각 랩의 `// TODO:` 를 채운 정답본. 배포 zip 에는 들어가지 않는다 |
+| `check_solutions.sh` | 정답본으로 전 랩을 빌드·실행한다 |
+| `Makefile` | `make dist` — 배포 zip 을 만든다 |
 
 ## 빌드
 
 각 랩 디렉터리에서 `make` 하나면 된다. nvcc 플래그는 Makefile 이 관리한다.
-실습실 PC 는 RTX 4060(sm_89) 기준이고, Makefile 이 꽂혀 있는 GPU 를 조회해
-아키텍처를 맞추므로 다른 PC 에서도 그대로 빌드된다.
+모든 랩이 `-arch=native` 로 빌드하므로 꽂혀 있는 GPU 에 맞춰 컴파일된다.
+폴백은 두지 않았다. 툴킷이 그 GPU 를 모르면 빌드가 실패하는 것이 옳다.
+조용히 다른 아키텍처로 빌드되면 실행 시점에 `no kernel image is available` 이
+뜨고 원인을 찾기 어렵다.
+
+> sm_120(RTX 50 시리즈)은 CUDA 12.8 이상이 있어야 컴파일된다.
+> 현재 툴킷이 12.4 라면 그 PC 에서는 툴킷을 먼저 올려야 한다.
+
+`common.cuh` 는 저장소에서는 `common/` 에, 배포 zip 에서는 랩 디렉터리에 함께
+들어간다. Makefile 이 양쪽을 다 찾으므로 소스의 include 는 `"common.cuh"` 하나다.
 
 `make help` 로 각 랩에서 쓸 수 있는 명령을 볼 수 있다.
 `make test` 는 `verify.py` 를 돌려 제출 전 자체 점검을 한다.
 
-## 배포 시 함께 넣는 파일
+## 배포
 
-일부 랩은 다른 랩의 파일을 쓴다. 저장소에는 중복 보관하지 않고
-배포 zip 을 만들 때 복사해 넣는다.
+```
+make dist                          # dist/*.zip
+make dist LAB=lab06-tiled-matmul   # 하나만
+```
+
+zip 하나가 랩 하나다. 학생은 풀고 `make` 만 치면 된다.
+`common.cuh` 는 lab01 을 뺀 모든 zip 에 복사해 넣는다. 학생 쪽에는
+`common/` 디렉터리가 없기 때문이다.
+
+일부 랩은 다른 랩의 파일도 쓴다. 저장소에는 중복 보관하지 않고
+zip 을 만들 때 복사해 넣는다.
 
 | 랩 | 함께 넣을 파일 |
 |---|---|
-| lab04 | lab02 의 `vecadd.cu`, `common/common.cuh` |
-| lab09 | lab03 의 `pgm.h`, `common/common.cuh` |
+| lab04 | lab02 의 `vecadd.cu` |
+| lab09 | lab03 의 `pgm.h` |
+
+`solutions/` 는 zip 에 절대 들어가지 않는다. `make dist` 가 zip 을 만든 뒤
+안을 한 번 더 검사하고, 흔적이 있으면 실패한다.
+
+## 정답본
+
+`solutions/<랩>/` 에 `// TODO:` 를 채운 파일이 원본과 같은 이름으로 들어 있다.
+근거는 `extracted/` 의 슬라이드 코드다 (lab01 과 lab10 privatization 만 예외 —
+슬라이드에 코드가 없어 직접 작성했다).
+
+```
+bash check_solutions.sh          # 전 랩
+bash check_solutions.sh lab06    # 하나만
+```
+
+임시 디렉터리에 배포 zip 과 같은 구성을 만들고 정답본을 덮어써서 빌드·실행한다.
+`labs/` 는 건드리지 않는다. `declared but never referenced` 경고가 뜨면
+그 랩의 TODO 가 덜 채워진 것이다.
 
 ## 아직 배정하지 않은 것
 

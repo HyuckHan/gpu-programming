@@ -7,8 +7,14 @@
 - PCIe 4.0 x8 (호스트-디바이스 전송 실측 12 GB/s 내외)
 
 ## 빌드
-- `nvcc -arch=sm_89 -O3` 고정. 다중 아키텍처 빌드 불필요
+- `nvcc -arch=native -O3` 고정. 다중 아키텍처 빌드 불필요
+- **폴백을 두지 않는다.** 감지 실패 시 조용히 sm_89 로 빌드되면 다른 GPU 자리에서
+  실행 시점에 `no kernel image is available` 이 뜨고 원인을 찾기 어렵다.
+  빌드가 실패하는 것이 옳다. (sm_120 은 CUDA 12.8 이상이 있어야 컴파일된다)
 - 학생이 nvcc 플래그를 직접 치지 않게 한다. Makefile로만 빌드
+- `common.cuh`/`pgm.h` 는 저장소 경로와 배포 zip 경로가 다르다. Makefile 에서
+  `COMMON_DIR ?= $(if $(wildcard common.cuh),.,../../common)` 으로 이중화하고
+  `-I` 로 넘긴다. 소스의 include 는 항상 `#include "common.cuh"` 형태다.
 
 ## 코딩 규약
 - 자료형 float 고정. double 금지 (FP32의 1/64 속도)
@@ -37,8 +43,11 @@
 - 이 저장소는 비공개다. 학생 배포는 LMS zip으로 별도 수행한다.
 - broken_*.cu 는 학생에게 배포하는 실습 자료다. 정상 커밋한다.
   (타일드 커널 완성본은 이미 강의 슬라이드에 있으므로 감출 대상이 아니다)
-- solutions/ 만 예외: 슬라이드에 답이 없는 D유형 과제
-  (lab13 scan 변형, lab14 전치 행렬곱)의 정답은 이 저장소에 두지 않는다.
+- solutions/ 도 커밋한다. 저장소가 비공개라 밖으로 새지 않고, 저장소 밖에 두면
+  백업이 안 되고 스켈레톤과 어긋난다. `make dist` 의 zip 대상에서만 제외한다.
+  파일명은 원본과 같게 유지한다. 덮어쓰기로 검증하기 때문이다.
+- `bash check_solutions.sh` 가 정답본으로 전 랩을 빌드·실행한다. labs/ 는 건드리지 않는다.
+  "declared but never referenced" 경고가 뜨면 그 랩의 TODO 가 덜 채워진 것이다.
 
 ## common.cuh 범위
 - common.cuh에는 랩 공통 인프라만 둔다:

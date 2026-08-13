@@ -1,0 +1,193 @@
+// 6주차 — 공유 메모리 타일링 행렬곱
+// 채울 곳은 mm_tiled_kernel 본체 하나뿐이다. 나머지는 완성된 코드다.
+#include <stdio.h>
+#include <stdlib.h>
+#include "common.cuh"
+
+// ---------------------------------------------------------------------------
+// naive 행렬곱 — 3주차에서 다룬 커널 (완성)
+// ---------------------------------------------------------------------------
+__global__ void mm_kernel(float* A, float* B, float* C, unsigned int N) {
+
+    unsigned int row = blockIdx.y*blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x*blockDim.x + threadIdx.x;
+
+    float sum = 0.0f;
+    for(unsigned int i = 0; i < N; ++i) {
+        sum += A[row*N + i]*B[i*N + col];
+    }
+    C[row*N + col] = sum;
+
+}
+
+// ---------------------------------------------------------------------------
+// 타일링 행렬곱 — 여기를 채운다
+//
+// TILE_DIM은 shared memory 배열의 크기라서 컴파일 시점에 정해져야 한다.
+// 그래서 커널을 template로 두고, 호스트에서 8/16/32 중 하나를 골라 부른다.
+// 템플릿 문법 자체는 신경 쓸 필요 없다. 커널 안에서 TILE_DIM은 그냥 상수다.
+// ---------------------------------------------------------------------------
+template <unsigned int TILE_DIM>
+__global__ void mm_tiled_kernel(float* A, float* B, float* C, unsigned int N) {
+
+    __shared__ float A_s[TILE_DIM][TILE_DIM];
+    __shared__ float B_s[TILE_DIM][TILE_DIM];
+
+    unsigned int row = blockIdx.y*blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x*blockDim.x + threadIdx.x;
+
+    float sum = 0.0f;
+
+    for(unsigned int tile = 0; tile < N/TILE_DIM; ++tile) {
+
+        // Load tile to shared memory
+        A_s[threadIdx.y][threadIdx.x] = A[row*N + tile*TILE_DIM + threadIdx.x];
+        B_s[threadIdx.y][threadIdx.x] = B[(tile*TILE_DIM + threadIdx.y)*N + col];
+        __syncthreads();
+
+        // Compute with tile
+        for(unsigned int i = 0; i < TILE_DIM; ++i) {
+            sum += A_s[threadIdx.y][i]*B_s[i][threadIdx.x];
+        }
+        __syncthreads();
+
+    }
+
+    C[row*N + col] = sum;
+
+}
+
+// ---------------------------------------------------------------------------
+// 호스트 코드 (완성)
+// ---------------------------------------------------------------------------
+
+// N x N 행렬을 -0.5 ~ 0.5 난수로 채운다.
+// 시드가 같으면 어느 PC에서 몇 번을 돌려도 같은 값이 나온다(재현 가능).
+static void init_matrix(float* M, unsigned int N, unsigned int seed) {
+    unsigned int s = seed;
+    for (unsigned int i = 0; i < N*N; ++i) {
+        s = s*1664525u + 1013904223u;                     // 선형 합동 생성기
+        M[i] = (float)(s >> 16)/65536.0f - 0.5f;
+    }
+}
+
+// CPU 참조 행렬곱. 변수명은 위 mm_kernel과 같다.
+// 1주차 워밍업(w01-c-warmup/warmup.c)에서 학생이 직접 작성한 함수와 같은 것이다.
+// O(N^3)이라 N이 커지면 매우 느리다. 작은 N에서만 쓴다.
+static void mat_mul(const float* A, const float* B, float* C, int N) {
+    for (int row = 0; row < N; ++row) {
+        for (int col = 0; col < N; ++col) {
+            float sum = 0.0f;
+            for (int i = 0; i < N; ++i) {
+                sum += A[row*N + i]*B[i*N + col];
+            }
+            C[row*N + col] = sum;
+        }
+    }
+}
+
+// 런타임에 받은 tile_dim 값으로 알맞은 템플릿 커널을 부른다.
+static void launch_tiled(unsigned int tile_dim, dim3 grid, dim3 block,
+                         float* A_d, float* B_d, float* C_d, unsigned int N) {
+    switch (tile_dim) {
+        case  8: mm_tiled_kernel< 8><<<grid, block>>>(A_d, B_d, C_d, N); break;
+        case 16: mm_tiled_kernel<16><<<grid, block>>>(A_d, B_d, C_d, N); break;
+        case 32: mm_tiled_kernel<32><<<grid, block>>>(A_d, B_d, C_d, N); break;
+    }
+    CUDA_CHECK(cudaGetLastError());
+}
+
+int main(int argc, char** argv) {
+
+    unsigned int N        = (argc > 1) ? (unsigned int)atoi(argv[1]) : 4096;
+    unsigned int TILE_DIM = (argc > 2) ? (unsigned int)atoi(argv[2]) : 32;
+
+    if (TILE_DIM != 8 && TILE_DIM != 16 && TILE_DIM != 32) {
+        fprintf(stderr, "TILE_DIM은 8, 16, 32 중 하나여야 한다 (받은 값: %u)\n", TILE_DIM);
+        return 1;
+    }
+    if (N == 0 || N % TILE_DIM != 0) {
+        fprintf(stderr, "N은 TILE_DIM의 배수여야 한다 (N=%u, TILE_DIM=%u)\n", N, TILE_DIM);
+        return 1;
+    }
+    // 기준선 naive가 16x16 고정이므로 N은 16의 배수이기도 해야 한다.
+    if (N % 16 != 0) {
+        fprintf(stderr, "N은 16의 배수여야 한다 (기준선 naive가 16x16 고정이다, N=%u)\n", N);
+        return 1;
+    }
+    if (N > 8192) {
+        fprintf(stderr, "N은 8192 이하로 한다 (VRAM 8GB)\n");
+        return 1;
+    }
+
+    size_t bytes = (size_t)N*N*sizeof(float);
+    printf("N = %u, TILE_DIM = %u, 행렬 하나당 %.1f MB\n",
+           N, TILE_DIM, bytes/(1024.0*1024.0));
+
+    // 호스트 메모리
+    float* A       = (float*)malloc(bytes);
+    float* B       = (float*)malloc(bytes);
+    float* C_naive = (float*)malloc(bytes);
+    float* C_tiled = (float*)malloc(bytes);
+    init_matrix(A, N, 1u);
+    init_matrix(B, N, 2u);
+
+    // 디바이스 메모리
+    float *A_d, *B_d, *C_d;
+    CUDA_CHECK(cudaMalloc((void**) &A_d, bytes));
+    CUDA_CHECK(cudaMalloc((void**) &B_d, bytes));
+    CUDA_CHECK(cudaMalloc((void**) &C_d, bytes));
+    CUDA_CHECK(cudaMemcpy(A_d, A, bytes, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(B_d, B, bytes, cudaMemcpyHostToDevice));
+
+    dim3 block(TILE_DIM, TILE_DIM);
+    dim3 grid(N/TILE_DIM, N/TILE_DIM);
+    Timer timer;
+
+    // 기준선 naive는 TILE_DIM과 무관하게 항상 16x16으로 돌린다.
+    // TILE_DIM을 바꿀 때 기준선까지 같이 움직이면 배속을 해석할 수 없다.
+    dim3 block_naive(16, 16);
+    dim3 grid_naive(N/16, N/16);
+
+    // naive — 한 번 예열한 뒤 측정한다 (첫 호출에는 초기화 비용이 섞인다)
+    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+    timer.start();
+    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
+    float ms_naive = timer.stop();
+    CUDA_CHECK(cudaMemcpy(C_naive, C_d, bytes, cudaMemcpyDeviceToHost));
+
+    // tiled
+    CUDA_CHECK(cudaMemset(C_d, 0, bytes));
+    launch_tiled(TILE_DIM, grid, block, A_d, B_d, C_d, N);
+    CUDA_CHECK(cudaDeviceSynchronize());
+    timer.start();
+    launch_tiled(TILE_DIM, grid, block, A_d, B_d, C_d, N);
+    float ms_tiled = timer.stop();
+    CUDA_CHECK(cudaMemcpy(C_tiled, C_d, bytes, cudaMemcpyDeviceToHost));
+
+    // 정확성 — tiled를 naive와 비교한다.
+    // 위치는 1차원 인덱스로 나온다. 행 = i/N, 열 = i%N 으로 읽으면 된다.
+    size_t count = (size_t)N*N;
+    int ok = compare_float(C_naive, C_tiled, count, 1e-3f);
+
+    // N이 작을 때만 CPU 참조까지 확인한다 (O(N^3)이라 크면 너무 느리다)
+    if (ok && N <= 1024) {
+        float* C_ref = (float*)malloc(bytes);
+        mat_mul(A, B, C_ref, N);
+        ok = compare_float(C_ref, C_tiled, count, 1e-3f);
+        printf("CPU 참조 대조: %s\n", ok ? "일치" : "불일치");
+        free(C_ref);
+    }
+
+    double gflop = 2.0*N*N*N/1e9;
+    printf("naive: %8.3f ms  (%7.1f GFLOP/s)\n", ms_naive, gflop/(ms_naive/1e3));
+    printf("tiled: %8.3f ms  (%7.1f GFLOP/s)\n", ms_tiled, gflop/(ms_tiled/1e3));
+    printf("정확성: %s\n", ok ? "PASS" : "FAIL");
+    printf("배속: %.2fx\n", ms_naive/ms_tiled);
+
+    free(A); free(B); free(C_naive); free(C_tiled);
+    CUDA_CHECK(cudaFree(A_d)); CUDA_CHECK(cudaFree(B_d)); CUDA_CHECK(cudaFree(C_d));
+    return ok ? 0 : 1;
+}

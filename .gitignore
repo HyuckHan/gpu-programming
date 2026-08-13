@@ -24,3 +24,5 @@ labs/lab09-convolution/pgm.h
 labs/lab09-convolution/common.cuh
 histogram
 scan
+dist/
+solutions.log
