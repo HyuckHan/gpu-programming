@@ -45,7 +45,8 @@ runs_for() {
         lab05) echo "./matmul 4096 16" ;;
         lab06) echo "./matmul 4096 16"
                echo "./matmul 1024 32" ;;
-        lab07) echo "./matmul 4096 16 4" ;;
+        lab07) echo "./matmul 4096 16 4"
+               echo "./transpose 4096 32" ;;
         lab09) echo "./conv_const 2048 2048"
                echo "./conv_global 2048 2048" ;;
         lab10) echo "./histogram 67108864" ;;

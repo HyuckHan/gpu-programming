@@ -242,7 +242,7 @@ __global__ void add_offsets_kernel(float* output, const float* partialSums,
 // ---------------------------------------------------------------------------
 
 #define NUM_KERNELS 5
-#define REPEATS     100
+#define REPEATS     1000
 static const char* KERNEL_NAMES[NUM_KERNELS] = {
     "race", "global", "shared", "double", "exclusive"
 };
@@ -342,7 +342,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    printf("N = %u, BLOCK_DIM = %d\n", N, BLOCK_DIM);
+    printf("N = %u, BLOCK_DIM = %d,  반복 %d회 평균\n", N, BLOCK_DIM, REPEATS);
+    printf("왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.\n");
 
     size_t bytes = (size_t)N*sizeof(float);
     unsigned int numBlocks = N/BLOCK_DIM;
@@ -380,12 +381,26 @@ int main(int argc, char** argv) {
         run_once(k, numBlocks, numBlocks, input_d, output_d, partialSums_d, N);
         CUDA_CHECK(cudaDeviceSynchronize());
 
-        // 측정 — N이 작아 1회 측정은 흔들린다. 여러 번 돌려 평균을 낸다.
+        // 측정 — 1단계 커널만 잰다.
+        //
+        // 2, 3단계는 다섯 버전이 완전히 같은 코드를 쓴다. 세 단계를 통째로 재면
+        // 그 공통 부분이 시간의 상당 부분을 차지해서 정작 비교하려는 1단계의
+        // 차이가 묻힌다. 실제로 그렇게 재면 race/global/shared/double 이
+        // 측정 노이즈 안에서 뒤섞여 순위가 실행할 때마다 바뀐다.
+        //
+        // N이 작아 1회 측정은 흔들린다. 여러 번 돌려 평균을 낸다.
+        timer.start();
+        for (int r = 0; r < REPEATS; ++r) {
+            launch_stage1(k, numBlocks, input_d, output_d, partialSums_d, N);
+        }
+        float ms = timer.stop()/REPEATS;
+
+        // 전체 시간은 따로 한 번 잰다. 1단계가 전체에서 차지하는 몫을 보여 준다.
         timer.start();
         for (int r = 0; r < REPEATS; ++r) {
             run_once(k, numBlocks, numBlocks, input_d, output_d, partialSums_d, N);
         }
-        float ms = timer.stop()/REPEATS;
+        float ms_total = timer.stop()/REPEATS;
 
         CUDA_CHECK(cudaMemcpy(output, output_d, bytes, cudaMemcpyDeviceToHost));
 
@@ -394,10 +409,12 @@ int main(int argc, char** argv) {
         long long idx = first_mismatch(ref, output, N, 1e-3f);
 
         if (idx < 0) {
-            printf("%-9s : %6.3f ms   PASS\n", KERNEL_NAMES[k], ms);
+            printf("%-9s : %6.3f ms   (전체 %6.3f ms)   PASS\n",
+                   KERNEL_NAMES[k], ms, ms_total);
         } else {
-            printf("%-9s : %6.3f ms   FAIL   첫 불일치 idx=%lld  기대 %.6f  실제 %.6f\n",
-                   KERNEL_NAMES[k], ms, idx, ref[idx], output[idx]);
+            printf("%-9s : %6.3f ms   (전체 %6.3f ms)   FAIL   "
+                   "첫 불일치 idx=%lld  기대 %.6f  실제 %.6f\n",
+                   KERNEL_NAMES[k], ms, ms_total, idx, ref[idx], output[idx]);
         }
     }
 

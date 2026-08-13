@@ -22,13 +22,17 @@ N    ?= 4096
 TILE ?= 16
 C    ?= 4
 
-all: matmul
+# 실습 본체는 matmul(2·3절)과 transpose(1절) 둘이다.
+all: matmul transpose
 
 %: %.cu $(DEPS)
 	$(NVCC) $(NVCCFLAGS) -o $@ $<
 
 run: matmul
 	./matmul $(N) $(TILE) $(C)
+
+runt: transpose
+	./transpose $(N) $(TILE)
 
 test: matmul
 	python3 verify.py
@@ -39,16 +43,20 @@ clean:
 help:
 	@echo "lab07 — coalescing과 thread coarsening"
 	@echo ""
-	@echo "  make               matmul 을 빌드한다"
+	@echo "  make               matmul 과 transpose 를 빌드한다"
 	@echo "  make run           ./matmul $(N) $(TILE) $(C) 실행"
+	@echo "  make runt          ./transpose $(N) $(TILE) 실행"
 	@echo "  make test          verify.py 로 자체 점검한다"
 	@echo "  make clean         빌드 산출물을 지운다"
 	@echo ""
-	@echo "  ./sweep.sh size    N 을 바꿔가며 측정한다"
-	@echo "  ./sweep.sh coarse  COARSE_FACTOR 를 바꿔가며 측정한다"
+	@echo "  ./sweep.sh transpose  TILE_DIM 을 바꿔가며 전치를 측정한다"
+	@echo "  ./sweep.sh coarse     COARSE_FACTOR 를 바꿔가며 측정한다"
 	@echo ""
 	@echo "실행 인자   ./matmul <N> <TILE_DIM> <COARSE_FACTOR>   기본값 4096 16 4"
 	@echo "            TILE_DIM 은 8/16/32, COARSE_FACTOR 는 1/2/4/8"
 	@echo "            N 은 TILE_DIM*COARSE_FACTOR 의 배수여야 한다"
+	@echo ""
+	@echo "            ./transpose <N> <TILE_DIM>               기본값 4096 32"
+	@echo "            N 은 TILE_DIM 과 32 의 배수여야 한다"
 
-.PHONY: all run test clean help
+.PHONY: all run runt test clean help
