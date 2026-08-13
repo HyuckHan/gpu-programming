@@ -55,6 +55,7 @@ runs_for() {
         lab10) echo "./histogram 67108864" ;;
         lab11) echo "./reduce 67108864" ;;
         lab12) echo "./scan 1048576" ;;
+        lab13) echo "./stencil 256" ;;
     esac
 }
 

@@ -23,17 +23,16 @@
 | 12 | Ch09 병렬 히스토그램 | lab10 히스토그램과 데이터 경쟁 |
 | 13 | Ch10 리덕션 | lab11 리덕션 최적화 사다리 |
 | 14 | Ch11 Prefix Sum (Scan) Part 1 | lab12 스캔 (Kogge-Stone) |
-| 15 | 정리 | lab13 scan 변형 *(준비 중)* |
+| 15 | Ch08 스텐실 | lab13 3D stencil |
 | 16 | 기말고사 | — |
 
 ## 이수 조건
 
-전체 11개 실습 중 9개 이상 제출해야 P 를 받을 수 있다.
+전체 12개 실습 중 10개 이상 제출해야 P 를 받을 수 있다.
 제출 여부만 확인하고 점수를 매기지 않는다. 각 랩의 제출물은 해당 README 에 있다.
 
-집계 대상은 lab02, lab03, lab04, lab05, lab06, lab07, lab08, lab09, lab10, lab11,
-lab12 열한 개다. **lab01 만 집계에 들어가지 않는다.** 학기 첫 진단용이기 때문이다.
-lab13 을 나중에 넣게 되면 이 숫자를 다시 맞춰야 한다.
+집계 대상은 lab02 부터 lab13 까지 열두 개다.
+**lab01 만 집계에 들어가지 않는다.** 학기 첫 진단용이기 때문이다.
 
 ## 저장소 구성
 
@@ -58,6 +57,16 @@ lab13 을 나중에 넣게 되면 이 숫자를 다시 맞춰야 한다.
 
 > sm_120(RTX 50 시리즈)은 CUDA 12.8 이상이 있어야 컴파일된다.
 > 현재 툴킷이 12.4 라면 그 PC 에서는 툴킷을 먼저 올려야 한다.
+
+툴킷이 sm_120 을 아는지 미리 확인하려면 nvcc 에 직접 물어본다.
+
+```
+nvcc -arch=sm_120 -O3 -I common -c labs/lab05-matmul/matmul.cu -o /dev/null
+```
+
+12.8 미만이면 `nvcc fatal : Value 'sm_120' is not defined` 로 끝난다.
+`make ARCH=sm_120` 으로는 확인되지 않는다. `-arch=native` 로 바꾸면서
+`ARCH` 변수를 없앴기 때문에, 그 명령은 아무 일도 하지 않고 그냥 통과한다.
 
 `common.cuh` 는 저장소에서는 `common/` 에, 배포 zip 에서는 랩 디렉터리에 함께
 들어간다. Makefile 이 양쪽을 다 찾으므로 소스의 include 는 `"common.cuh"` 하나다.
@@ -110,7 +119,6 @@ bash check_solutions.sh lab06    # 하나만
 
 ## 아직 배정하지 않은 것
 
-- **Ch08 스텐실** — 덱과 추출 코드는 있으나 배정된 주가 없다
 - **Ch11 Part 2 (Brent-Kung)** — 슬라이드는 두되 진도에서 뺐다.
   work efficiency 분석이 이 학생층에 비용 대비 효과가 낮다
 - **lab14 전치 행렬곱** — CLAUDE.md 에 D 유형 과제로 언급되어 있으나

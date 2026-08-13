@@ -27,3 +27,4 @@ scan
 dist/
 solutions.log
 transpose
+stencil

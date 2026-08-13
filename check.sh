@@ -114,6 +114,11 @@ run_lab() {
     lab12-*)
       for i in 1 2 3; do run "./scan"; done
       ;;
+    lab13-*)
+      run "./stencil 256"
+      run "bash sweep.sh all"
+      run "bash sweep.sh tile"
+      ;;
     *) echo "[실행 규칙 없음 — case 문에 추가할 것]" ;;
   esac
   cd "$ROOT" || exit
