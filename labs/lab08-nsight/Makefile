@@ -1,3 +1,4 @@
+ARCH ?= native
 # lab08 — Nsight Compute
 # nvcc 플래그는 여기서 관리한다. 직접 칠 필요 없다.
 #
@@ -6,7 +7,7 @@
 
 NVCC := nvcc
 
-# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# -arch=$(ARCH) 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
 # 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
 # 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
 # 원인을 찾기 어렵다.
@@ -17,7 +18,7 @@ NVCC := nvcc
 #
 # common.cuh 는 저장소에서는 ../../common/ 에, 배포 zip 에서는 같은 디렉터리에 있다.
 COMMON_DIR ?= $(if $(wildcard common.cuh),.,../../common)
-NVCCFLAGS  := -arch=native -O3 -lineinfo -I$(COMMON_DIR)
+NVCCFLAGS  := -arch=$(ARCH) -O3 -lineinfo -I$(COMMON_DIR)
 COMMON     := $(COMMON_DIR)/common.cuh
 
 # 프로파일링에 쓸 세 지표.

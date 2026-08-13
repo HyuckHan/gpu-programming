@@ -1,9 +1,10 @@
+ARCH ?= native
 # lab09 — 컨볼루션과 상수 메모리
 # nvcc 플래그는 여기서 관리한다. 직접 칠 필요 없다.
 
 NVCC := nvcc
 
-# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# -arch=$(ARCH) 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
 # 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
 # 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
 # 원인을 찾기 어렵다.
@@ -18,7 +19,7 @@ PGM        := $(PGM_DIR)/pgm.h
 # FILTER_RADIUS는 상수 메모리 배열의 크기를 정하므로 컴파일 시점에 박힌다.
 # 값을 바꾸려면 다시 빌드해야 한다.  make RADIUS=4  처럼 넘긴다.
 RADIUS     ?= 2
-NVCCFLAGS  := -arch=native -O3 -DFILTER_RADIUS=$(RADIUS) -I$(COMMON_DIR) -I$(PGM_DIR)
+NVCCFLAGS  := -arch=$(ARCH) -O3 -DFILTER_RADIUS=$(RADIUS) -I$(COMMON_DIR) -I$(PGM_DIR)
 
 SRCS    := $(wildcard *.cu)
 TARGETS := $(SRCS:.cu=)

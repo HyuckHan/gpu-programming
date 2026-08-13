@@ -1,9 +1,10 @@
+ARCH ?= native
 # 3주차 — blur와 경계 조건
 # nvcc 플래그는 여기서 관리한다. 직접 칠 필요 없다.
 
 NVCC := nvcc
 
-# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# -arch=$(ARCH) 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
 # 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
 # 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
 # 원인을 찾기 어렵다.
@@ -15,7 +16,7 @@ COMMON     := $(COMMON_DIR)/common.cuh
 
 # -lineinfo 는 compute-sanitizer가 오류 지점을 소스 줄 번호로 찍게 해 준다.
 # 최적화에는 영향이 없다.
-NVCCFLAGS  := -arch=native -O3 -lineinfo -I$(COMMON_DIR)
+NVCCFLAGS  := -arch=$(ARCH) -O3 -lineinfo -I$(COMMON_DIR)
 
 SRCS    := $(wildcard *.cu)
 TARGETS := $(SRCS:.cu=)

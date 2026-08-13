@@ -1,3 +1,4 @@
+ARCH ?= native
 # 1주차 — 환경 확인과 C 워밍업
 #
 # 기본 타깃에는 gcc로 빌드하는 것만 넣는다.
@@ -20,7 +21,7 @@ loop_order: loop_order.c
 	$(CC) $(CFLAGS) -o $@ loop_order.c -lm
 
 hello: hello.cu
-	$(NVCC) -arch=native -O3 -o $@ hello.cu
+	$(NVCC) -arch=$(ARCH) -O3 -o $@ hello.cu
 
 clean:
 	rm -f warmup loop_order hello

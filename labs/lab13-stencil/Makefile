@@ -1,9 +1,10 @@
+ARCH ?= native
 # lab13 — 3D stencil 최적화 사다리
 # nvcc 플래그는 여기서 관리한다. 직접 칠 필요 없다.
 
 NVCC := nvcc
 
-# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# -arch=$(ARCH) 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
 # 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
 # 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
 # 원인을 찾기 어렵다.
@@ -16,7 +17,7 @@ COMMON     := $(COMMON_DIR)/common.cuh
 # 시점에 박힌다. 값을 바꾸려면 다시 빌드해야 한다.  make TILE=10  처럼 넘긴다.
 # ./sweep.sh tile 이 이 재빌드를 자동으로 해 준다.
 TILE       ?= 8
-NVCCFLAGS  := -arch=native -O3 -DIN_TILE_DIM=$(TILE) -I$(COMMON_DIR)
+NVCCFLAGS  := -arch=$(ARCH) -O3 -DIN_TILE_DIM=$(TILE) -I$(COMMON_DIR)
 
 # make run 이 쓸 기본 인자.  make run N=192  처럼 바꿀 수 있다.
 N ?= 256
