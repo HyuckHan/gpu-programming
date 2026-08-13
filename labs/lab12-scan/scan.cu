@@ -2,7 +2,7 @@
 // 채울 곳은 scan_global_kernel, scan_shared_kernel, scan_exclusive_kernel 세 군데다.
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 
 #define BLOCK_DIM 1024
 

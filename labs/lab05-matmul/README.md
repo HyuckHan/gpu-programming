@@ -86,6 +86,5 @@ make test       # python3 verify.py 와 같다
 
 ## 참고
 
-실습실 PC는 RTX 4060(sm_89) 기준이다. Makefile이 꽂혀 있는 GPU를 조회해
-아키텍처를 자동으로 맞추므로 다른 PC에서도 `make`만 치면 된다.
-직접 지정하려면 `make ARCH=sm_86` 처럼 넘긴다.
+Makefile 이 `-arch=native` 로 빌드하므로 꽂혀 있는 GPU 에 맞춰 자동으로
+컴파일된다. 다른 PC 에서도 `make` 만 치면 된다.

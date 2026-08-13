@@ -2,7 +2,7 @@
 // 채울 곳은 mm_tiled_coarse_kernel 본체 하나뿐이다. 나머지는 완성된 코드다.
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 
 // ---------------------------------------------------------------------------
 // naive 행렬곱 — lab05에서 직접 만든 커널 (완성)

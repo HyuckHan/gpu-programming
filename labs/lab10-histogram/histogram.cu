@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 
 #define NUM_BINS  256
 #define BLOCK_DIM 256

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 
 // ---------------------------------------------------------------------------
 // 슬라이드 21 — Code with Boundary Checks

@@ -2,7 +2,7 @@
 // 채울 곳은 blur_kernel 안쪽 루프 하나뿐이다. 나머지는 완성된 코드다.
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 #include "pgm.h"
 
 // ---------------------------------------------------------------------------

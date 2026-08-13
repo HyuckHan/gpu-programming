@@ -3,16 +3,19 @@
 
 NVCC := nvcc
 
-# 실습실 PC는 전량 RTX 4060(sm_89)이라 거기서는 항상 sm_89가 잡힌다.
-# 다른 GPU가 꽂힌 PC에서도 플래그를 직접 치지 않아도 되도록 로컬 GPU의
-# compute capability를 조회해서 쓰고, 조회에 실패하면 sm_89로 둔다.
-DETECTED_CC := $(shell nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d '.')
-ARCH        ?= sm_$(if $(DETECTED_CC),$(DETECTED_CC),89)
-NVCCFLAGS   := -arch=$(ARCH) -O3
+# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
+# 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
+# 원인을 찾기 어렵다.
+#
+# common.cuh 는 저장소에서는 ../../common/ 에, 배포 zip 에서는 같은 디렉터리에 있다.
+COMMON_DIR ?= $(if $(wildcard common.cuh),.,../../common)
+NVCCFLAGS  := -arch=native -O3 -I$(COMMON_DIR)
+COMMON     := $(COMMON_DIR)/common.cuh
 
 SRCS    := $(wildcard *.cu)
 TARGETS := $(SRCS:.cu=)
-DEPS    := ../../common/common.cuh
+DEPS    := $(COMMON)
 
 # make run 이 쓸 기본 인자.  make run N=2048 TILE=32 C=2  처럼 바꿀 수 있다.
 N    ?= 4096

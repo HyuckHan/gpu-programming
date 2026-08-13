@@ -3,27 +3,26 @@
 
 NVCC := nvcc
 
-# 실습실 PC는 전량 RTX 4060(sm_89)이라 거기서는 항상 sm_89가 잡힌다.
-# 다른 GPU가 꽂힌 PC에서도 플래그를 직접 치지 않아도 되도록 로컬 GPU의
-# compute capability를 조회해서 쓰고, 조회에 실패하면 sm_89로 둔다.
-DETECTED_CC := $(shell nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d '.')
-ARCH        ?= sm_$(if $(DETECTED_CC),$(DETECTED_CC),89)
+# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
+# 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
+# 원인을 찾기 어렵다.
+#
+# common.cuh 와 pgm.h 는 배포 zip 에서는 같은 디렉터리에 함께 들어 있고,
+# 저장소에서는 각각 common/ 과 lab03 에 있다. 양쪽에서 다 빌드되게 한다.
+COMMON_DIR ?= $(if $(wildcard common.cuh),.,../../common)
+PGM_DIR    ?= $(if $(wildcard pgm.h),.,../lab03-blur)
+COMMON     := $(COMMON_DIR)/common.cuh
+PGM        := $(PGM_DIR)/pgm.h
 
 # FILTER_RADIUS는 상수 메모리 배열의 크기를 정하므로 컴파일 시점에 박힌다.
 # 값을 바꾸려면 다시 빌드해야 한다.  make RADIUS=4  처럼 넘긴다.
-RADIUS      ?= 2
-NVCCFLAGS   := -arch=$(ARCH) -O3 -DFILTER_RADIUS=$(RADIUS)
+RADIUS     ?= 2
+NVCCFLAGS  := -arch=native -O3 -DFILTER_RADIUS=$(RADIUS) -I$(COMMON_DIR) -I$(PGM_DIR)
 
 SRCS    := $(wildcard *.cu)
 TARGETS := $(SRCS:.cu=)
-
-# 이 디렉터리에는 pgm.h 와 common.cuh 가 함께 들어 있어야 한다.
-# pgm.h 는 lab03 에서, common.cuh 는 common/ 에서 복사해 온 것이다.
-ifeq ($(wildcard pgm.h),)
-ifneq ($(MAKECMDGOALS),clean)
-$(error pgm.h 가 없다. lab03 의 pgm.h 와 common/common.cuh 를 이 디렉터리에 복사하라)
-endif
-endif
+DEPS    := $(COMMON) $(PGM)
 
 # make run 이 쓸 기본 인자.  make run W=2048 H=2048  처럼 바꿀 수 있다.
 W ?= 4096
@@ -31,7 +30,7 @@ H ?= 4096
 
 all: $(TARGETS)
 
-%: %.cu pgm.h common.cuh
+%: %.cu $(DEPS)
 	$(NVCC) $(NVCCFLAGS) -o $@ $<
 
 run: conv_const

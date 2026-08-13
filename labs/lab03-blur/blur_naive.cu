@@ -2,7 +2,7 @@
 // 이 프로그램은 컴파일되고 실행도 된다. 출력을 관찰하는 것이 과제다.
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 #include "pgm.h"
 
 // ---------------------------------------------------------------------------

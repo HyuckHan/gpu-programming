@@ -19,18 +19,19 @@ shared memory 선언 두 줄도 그대로 두면 된다.
 ## 빌드와 실행
 
 ```
-make            # matmul, broken_syncthreads 둘 다 빌드
-make run        # ./matmul 4096 32 과 같다
-make help       # 쓸 수 있는 명령과 인자를 모두 보여준다
+make                     # skeleton.cu 를 matmul 로 빌드
+make broken_syncthreads  # 관찰 과제용. 필요할 때 따로 빌드한다
+make run                 # ./matmul 4096 16 과 같다
+make help                # 쓸 수 있는 명령과 인자를 모두 보여준다
 ```
 
 인자는 `./matmul <N> <TILE_DIM>` 형태다. TILE_DIM은 8, 16, 32 중 하나이고
-N은 TILE_DIM의 배수여야 한다. 인자를 생략하면 N=4096, TILE_DIM=32다.
+N은 TILE_DIM의 배수여야 한다. 인자를 생략하면 N=4096, TILE_DIM=16이다.
 
 ```
-./matmul 4096 32      # 기본 조건. 행렬 3개 201MB — L2(24MB)를 한참 넘는다
-./matmul 1024 32      # 행렬 3개 12MB — L2에 다 들어간다
-./matmul 1024 16
+./matmul 4096 16      # 기본 조건. 행렬 3개 201MB — L2(24MB)를 한참 넘는다
+./matmul 1024 16      # 행렬 3개 12MB — L2에 다 들어간다
+./matmul 4096 32      # 블록당 1024 스레드 — occupancy 가 떨어진다
 ```
 
 `make run N=1024 TILE=16` 처럼 Makefile 변수로 넘겨도 된다.
@@ -83,6 +84,5 @@ N이 1024 이하면 CPU 참조 구현(`mm_cpu`)과도 한 번 더 대조한다.
 
 ## 참고
 
-실습실 PC는 RTX 4060(sm_89) 기준이다. Makefile이 꽂혀 있는 GPU를 조회해
-아키텍처를 자동으로 맞추므로 다른 PC에서도 `make`만 치면 된다.
-직접 지정하려면 `make ARCH=sm_86` 처럼 넘긴다.
+Makefile 이 `-arch=native` 로 빌드하므로 꽂혀 있는 GPU 에 맞춰 자동으로
+컴파일된다. 다른 PC 에서도 `make` 만 치면 된다.

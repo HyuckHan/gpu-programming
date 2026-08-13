@@ -2,7 +2,7 @@
 // 채울 곳은 mm_kernel 본체 하나뿐이다. 나머지는 완성된 코드다.
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 
 // ---------------------------------------------------------------------------
 // 슬라이드 22 — Chapter 03, Example: Matrix-Matrix Multiplication

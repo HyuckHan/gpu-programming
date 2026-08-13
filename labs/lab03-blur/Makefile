@@ -3,18 +3,23 @@
 
 NVCC := nvcc
 
-# 실습실 PC는 전량 RTX 4060(sm_89)이라 거기서는 항상 sm_89가 잡힌다.
-# 다른 GPU가 꽂힌 PC에서도 플래그를 직접 치지 않아도 되도록 로컬 GPU의
-# compute capability를 조회해서 쓰고, 조회에 실패하면 sm_89로 둔다.
-DETECTED_CC := $(shell nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d '.')
-ARCH        ?= sm_$(if $(DETECTED_CC),$(DETECTED_CC),89)
+# -arch=native 는 이 PC에 꽂혀 있는 GPU에 맞춰 빌드한다 (CUDA 11.5 이상).
+# 폴백을 두지 않는다. 감지에 실패하면 빌드가 실패하는 것이 옳다. 조용히 다른
+# 아키텍처로 빌드되면 실행 시점에 no kernel image is available 이 뜨고
+# 원인을 찾기 어렵다.
+#
+# common.cuh 는 저장소에서는 ../../common/ 에, 배포 zip 에서는 같은 디렉터리에 있다.
+# pgm.h 는 양쪽 모두 이 디렉터리에 있다.
+COMMON_DIR ?= $(if $(wildcard common.cuh),.,../../common)
+COMMON     := $(COMMON_DIR)/common.cuh
+
 # -lineinfo 는 compute-sanitizer가 오류 지점을 소스 줄 번호로 찍게 해 준다.
 # 최적화에는 영향이 없다.
-NVCCFLAGS   := -arch=$(ARCH) -O3 -lineinfo
+NVCCFLAGS  := -arch=native -O3 -lineinfo -I$(COMMON_DIR)
 
 SRCS    := $(wildcard *.cu)
 TARGETS := $(SRCS:.cu=)
-DEPS    := pgm.h ../../common/common.cuh
+DEPS    := $(COMMON) pgm.h
 
 # make run 이 쓸 기본 인자.  make run W=256 H=256 B=3  처럼 바꿀 수 있다.
 W ?= 512

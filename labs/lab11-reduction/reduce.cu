@@ -2,7 +2,7 @@
 // 채울 곳은 reduce_shared_kernel 과 reduce_coarse_kernel 두 개뿐이다.
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../common/common.cuh"
+#include "common.cuh"
 
 #define BLOCK_DIM     256
 #define COARSE_FACTOR 4
