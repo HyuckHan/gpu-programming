@@ -13,8 +13,8 @@ ulp
 vecadd
 vecadd_naive
 divergence
-labs/w04-occupancy/vecadd.cu
-labs/w04-occupancy/common.cuh
+labs/lab04-occupancy/vecadd.cu
+labs/lab04-occupancy/common.cuh
 warmup
 loop_order
 hello
@@ -28,3 +28,7 @@ dist/
 solutions.log
 transpose
 stencil
+
+# 설치 부산물과 루트에 흘린 로그. 로그는 logs/ 에 둔다.
+cuda-keyring_*.deb
+/*.log

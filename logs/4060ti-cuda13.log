@@ -1,0 +1,999 @@
+
+=================== 환경 ===================
+
+$ nvidia-smi --query-gpu=name,compute_cap,memory.total --format=csv
+name, compute_cap, memory.total [MiB]
+NVIDIA GeForce RTX 4060 Ti, 8.9, 8188 MiB
+
+$ nvcc --version | tail -2
+Cuda compilation tools, release 13.3, V13.3.73
+Build cuda_13.3.r13.3/compiler.38244171_0
+
+$ ncu --version | tail -1
+Version 2026.2.1.0 (build 38283040) (public-release)
+
+=================== lab01-c-warmup ===================
+[정답본 적용: solutions/lab01]
+
+$ ./warmup
+=== 1. 정확성 확인 (손으로 계산할 수 있는 크기) ===
+mat_add       : PASS
+mat_mul       : PASS
+mat_transpose : PASS
+
+=== 2. 큰 크기에서 확인 (N=512) ===
+mat_add       : PASS   (A + 0 = A,  0.2 ms)
+mat_mul       : PASS   (A x I = A,  162.5 ms)
+mat_transpose : PASS   (512x256 두 번 전치 = 원래,  1.4 ms)
+
+못 채운 함수가 있어도 괜찮다. 이 실습은 채점하지 않는다.
+
+$ ./loop_order
+N = 1024
+
+ijk 순서 :   3620.6 ms
+ikj 순서 :    491.3 ms
+비율     :     7.37 배
+
+두 결과의 최대 차이 : 0.000e+00  (같다)
+
+$ ./hello
+=== 1단계: GPU가 보이는지 ===
+GPU 1개를 찾았다.
+
+  [0] NVIDIA GeForce RTX 4060 Ti  (compute capability 8.9)
+
+=== 2단계: 커널이 실제로 도는지 ===
+  커널 안에서 인사합니다. threadIdx.x = 0
+  커널 안에서 인사합니다. threadIdx.x = 1
+  커널 안에서 인사합니다. threadIdx.x = 2
+  커널 안에서 인사합니다. threadIdx.x = 3
+
+여기까지 나왔으면 1주차 필수 목표는 끝났다.
+
+=================== lab02-vecadd ===================
+[정답본 적용: solutions/lab02]
+
+$ ./vecadd --info
+GPU                   : NVIDIA GeForce RTX 4060 Ti (compute capability 8.9)
+SM 개수                : 34
+워프 크기              : 32
+SM당 최대 스레드 수    : 1536
+SM당 최대 블록 수      : 24
+SM당 최대 워프 수      : 48
+블록당 최대 스레드 수  : 1024
+
+$ ./vecadd
+N = 9999999, blockDim = 256, 배열 3개 합계 114.4 MB
+blockDim=256  SM당 활성 블록 6  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :   12.816 ms
+커널     :    0.538 ms
+D2H 전송 :    6.076 ms
+─────────────────────────────────────
+전체     :   19.430 ms   (커널 비중 2.8%)
+
+$ ./vecadd_naive
+N = 9999999, blockDim = 256, 배열 3개 합계 114.4 MB
+blockDim=256  SM당 활성 블록 6  activeWarps/maxWarps = 100.0%
+
+  첫 불일치: [9999872]  기대 0.871958  실제 0.000000  (오차/기준크기 8.071e-01)
+검증: FAIL
+
+H2D 전송 :   11.606 ms
+커널     :    0.591 ms
+D2H 전송 :    5.380 ms
+─────────────────────────────────────
+전체     :   17.578 ms   (커널 비중 3.4%)
+
+$ ./vecadd 9999999 32
+N = 9999999, blockDim = 32, 배열 3개 합계 114.4 MB
+blockDim=32  SM당 활성 블록 24  activeWarps/maxWarps = 50.0%
+
+검증: PASS
+
+H2D 전송 :   13.132 ms
+커널     :    0.493 ms
+D2H 전송 :    4.911 ms
+─────────────────────────────────────
+전체     :   18.537 ms   (커널 비중 2.7%)
+
+$ ./vecadd 9999999 64
+N = 9999999, blockDim = 64, 배열 3개 합계 114.4 MB
+blockDim=64  SM당 활성 블록 24  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :   12.146 ms
+커널     :    0.540 ms
+D2H 전송 :    4.794 ms
+─────────────────────────────────────
+전체     :   17.480 ms   (커널 비중 3.1%)
+
+$ ./vecadd 9999999 128
+N = 9999999, blockDim = 128, 배열 3개 합계 114.4 MB
+blockDim=128  SM당 활성 블록 12  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :   11.829 ms
+커널     :    0.553 ms
+D2H 전송 :    5.400 ms
+─────────────────────────────────────
+전체     :   17.782 ms   (커널 비중 3.1%)
+
+$ ./vecadd 9999999 256
+N = 9999999, blockDim = 256, 배열 3개 합계 114.4 MB
+blockDim=256  SM당 활성 블록 6  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :   11.435 ms
+커널     :    0.628 ms
+D2H 전송 :    6.041 ms
+─────────────────────────────────────
+전체     :   18.105 ms   (커널 비중 3.5%)
+
+$ ./vecadd 9999999 512
+N = 9999999, blockDim = 512, 배열 3개 합계 114.4 MB
+blockDim=512  SM당 활성 블록 3  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :   12.743 ms
+커널     :    0.542 ms
+D2H 전송 :    4.709 ms
+─────────────────────────────────────
+전체     :   17.994 ms   (커널 비중 3.0%)
+
+$ ./vecadd 9999999 1024
+N = 9999999, blockDim = 1024, 배열 3개 합계 114.4 MB
+blockDim=1024  SM당 활성 블록 1  activeWarps/maxWarps = 66.7%
+
+검증: PASS
+
+H2D 전송 :   13.110 ms
+커널     :    0.540 ms
+D2H 전송 :    5.518 ms
+─────────────────────────────────────
+전체     :   19.169 ms   (커널 비중 2.8%)
+
+=================== lab03-blur ===================
+[정답본 적용: solutions/lab03]
+
+$ ./blur 512 512 8
+입력: 합성 사선 무늬 (512 x 512)
+BLUR_SIZE = 8
+
+입력 (좌상단 8x8):
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0 255
+   0   0   0   0   0   0 255 255
+   0   0   0   0   0 255 255 255
+   0   0   0   0 255 255 255 255
+   0   0   0 255 255 255 255 255
+
+GPU 출력 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+CPU 참조 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+커널 시간: 0.815 ms
+검증: PASS
+결과를 out.pgm 으로 저장했다
+
+$ ./blur_naive 512 512 8
+입력: 합성 사선 무늬 (512 x 512)
+BLUR_SIZE = 8
+
+입력 (좌상단 8x8):
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0 255
+   0   0   0   0   0   0 255 255
+   0   0   0   0   0 255 255 255
+   0   0   0   0 255 255 255 255
+   0   0   0 255 255 255 255 255
+
+GPU 출력: 없음 — 커널이 끝까지 실행되지 못했다
+  an illegal memory access was encountered
+
+CPU 참조 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+검증: FAIL
+
+$ compute-sanitizer --print-limit 3 ./blur_naive 512 512 8
+========= COMPUTE-SANITIZER
+========= Invalid __global__ read of size 1 bytes
+=========     at blur_kernel(unsigned char *, unsigned char *, unsigned int, unsigned int, int)+0x2b0 in blur_naive.cu:23
+=========     by thread (0,6,0) in block (0,0,0)
+=========     Access to 0x6081ffbf8 is out of bounds
+=========     and is 4294441977 bytes after the nearest allocation at 0x508240000 of size 262144 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x92b7] in blur_naive
+========= 
+========= Invalid __global__ read of size 1 bytes
+=========     at blur_kernel(unsigned char *, unsigned char *, unsigned int, unsigned int, int)+0x2b0 in blur_naive.cu:23
+=========     by thread (1,6,0) in block (0,0,0)
+=========     Access to 0x6081ffbf9 is out of bounds
+=========     and is 4294441978 bytes after the nearest allocation at 0x508240000 of size 262144 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x92b7] in blur_naive
+========= 
+========= Invalid __global__ read of size 1 bytes
+=========     at blur_kernel(unsigned char *, unsigned char *, unsigned int, unsigned int, int)+0x2b0 in blur_naive.cu:23
+=========     by thread (2,6,0) in block (0,0,0)
+=========     Access to 0x6081ffbfa is out of bounds
+=========     and is 4294441979 bytes after the nearest allocation at 0x508240000 of size 262144 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x92b7] in blur_naive
+========= 
+입력: 합성 사선 무늬 (512 x 512)
+BLUR_SIZE = 8
+
+입력 (좌상단 8x8):
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0 255
+   0   0   0   0   0   0 255 255
+   0   0   0   0   0 255 255 255
+   0   0   0   0 255 255 255 255
+   0   0   0 255 255 255 255 255
+
+GPU 출력: 없음 — 커널이 끝까지 실행되지 못했다
+  unknown error
+
+CPU 참조 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+검증: FAIL
+========= ERROR SUMMARY: 3821 errors
+========= ERROR SUMMARY: 3818 errors were not printed. Use --print-limit option to adjust the number of printed errors
+
+=================== lab04-occupancy ===================
+[정답본 없음: lab04 — TODO 상태로 실행됨]
+
+$ ./divergence
+N = 4194304, iters = 2000, blockDim = 256
+커널마다 예열 1회 뒤 5회 측정, 그중 가장 빠른 값을 쓴다.
+
+분기 있음 (i % 2)      :     1.84 ms
+분기 없음 ((i/32) % 2) :     0.93 ms
+비율                   :     1.98 배
+
+결과 합 (분기 있음 / 분기 없음) : 4.224429e+09 / 4.224429e+09
+
+$ ./divergence 4194304 4000 256
+N = 4194304, iters = 4000, blockDim = 256
+커널마다 예열 1회 뒤 5회 측정, 그중 가장 빠른 값을 쓴다.
+
+분기 있음 (i % 2)      :     3.64 ms
+분기 없음 ((i/32) % 2) :     1.83 ms
+비율                   :     1.99 배
+
+결과 합 (분기 있음 / 분기 없음) : 8.616272e+09 / 8.616272e+09
+
+=================== lab05-matmul ===================
+[정답본 적용: solutions/lab05]
+
+$ ./matmul 4096 16
+N = 4096, blockDim = 16 x 16, 행렬 하나당 64.0 MB
+검증: CPU 참조 표본 대조 (무작위 4096개 원소)
+naive :  138.006 ms  (  995.9 GFLOP/s)
+정확성: PASS
+
+=================== lab06-tiled-matmul ===================
+[정답본 적용: solutions/lab06]
+
+$ ./matmul 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+naive:  136.097 ms  ( 1009.9 GFLOP/s)
+tiled:  103.983 ms  ( 1321.7 GFLOP/s)
+정확성: PASS
+배속: 1.31x
+
+$ ./matmul 4096 16
+N = 4096, TILE_DIM = 16, 행렬 하나당 64.0 MB
+naive:  135.020 ms  ( 1017.9 GFLOP/s)
+tiled:   84.152 ms  ( 1633.2 GFLOP/s)
+정확성: PASS
+배속: 1.60x
+
+$ ./matmul 4096 32
+N = 4096, TILE_DIM = 32, 행렬 하나당 64.0 MB
+naive:  135.896 ms  ( 1011.4 GFLOP/s)
+tiled:   83.384 ms  ( 1648.3 GFLOP/s)
+정확성: PASS
+배속: 1.63x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 1.027954  (오차/기준크기 2.907e-01)
+naive:  136.836 ms  ( 1004.4 GFLOP/s)
+tiled:  101.704 ms  ( 1351.4 GFLOP/s)
+정확성: FAIL
+배속: 1.35x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 -0.657513  (오차/기준크기 6.068e-01)
+naive:  135.981 ms  ( 1010.7 GFLOP/s)
+tiled:  100.123 ms  ( 1372.7 GFLOP/s)
+정확성: FAIL
+배속: 1.36x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 3.913859  (오차/기준크기 2.506e-01)
+naive:  137.209 ms  ( 1001.7 GFLOP/s)
+tiled:  101.394 ms  ( 1355.5 GFLOP/s)
+정확성: FAIL
+배속: 1.35x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 2.806207  (오차/기준크기 4.283e-02)
+naive:  134.998 ms  ( 1018.1 GFLOP/s)
+tiled:  100.912 ms  ( 1362.0 GFLOP/s)
+정확성: FAIL
+배속: 1.34x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 -0.061495  (오차/기준크기 4.950e-01)
+naive:  135.871 ms  ( 1011.5 GFLOP/s)
+tiled:  101.000 ms  ( 1360.8 GFLOP/s)
+정확성: FAIL
+배속: 1.35x
+
+=================== lab07-coarsening ===================
+[정답본 적용: solutions/lab07]
+
+$ ./matmul 4096 16 4
+N=4096, TILE_DIM=16, COARSE_FACTOR=4   행렬 하나당 64.0 MB
+naive        :    136.0 ms    1010.9 GFLOP/s   1.00x  (기준선, 16x16 고정)
+tiled        :     83.9 ms    1637.7 GFLOP/s   1.62x
+tiled+coarse :     73.6 ms    1867.5 GFLOP/s   1.85x
+정확성: tiled=PASS  coarse=PASS
+
+$ ./transpose 4096 32
+N = 4096  (입력 64.0 MB + 출력 64.0 MB = 128.0 MB, L2 32MB 초과)
+TILE_DIM = 32,  반복 20회 평균
+
+naive 32x32      :   1.00 ms   134.1 GB/s   (이론 대비 46.6%)
+naive 16x16      :   0.52 ms   260.2 GB/s   (이론 대비 90.3%)
+tiled 32x32      :   0.62 ms   217.2 GB/s   (이론 대비 75.4%)
+배속  :   1.62 x   (기준선 naive 32x32 대비)
+정확성: PASS
+
+$ bash sweep.sh transpose
+전치 스윕 — N=4096, 기준선 naive 32x32 고정
+
+TILE_DIM   tiled ms   tiled GB/s 이론대비   배속
+       8       0.54        247.1      85.8%    1.85x
+      16       0.53        253.8      88.1%    2.06x
+      32       0.63        214.2      74.4%    1.68x
+
+기준선과 비교선 (TILE_DIM 과 무관하게 같다)
+naive 32x32      :   1.06 ms   126.6 GB/s   (이론 대비 43.9%)
+naive 16x16      :   0.52 ms   258.6 GB/s   (이론 대비 89.8%)
+
+$ bash sweep.sh coarse
+coarsening 스윕 — N=4096, TILE_DIM=16 고정
+
+COARSE      naive      tiled   배속     coarse   배속
+     1     1012.6     1618.7    1.60x     1616.7    1.60x
+     2     1007.0     1633.7    1.62x     1824.5    1.81x
+     4     1017.4     1632.2    1.60x     1880.0    1.85x
+     8     1008.2     1635.0    1.62x     1894.3    1.88x
+
+=================== lab08-nsight ===================
+[lab08 — lab06 정답본을 matmul.cu 로 사용. 채울 TODO 가 없는 랩이다]
+
+$ ncu --version
+NVIDIA (R) Nsight Compute Command Line Profiler
+Copyright (c) 2018-2026 NVIDIA Corporation
+Version 2026.2.1.0 (build 38283040) (public-release)
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_kernel --launch-count 1 ./matmul 1024 16
+==PROF== Connected to process 38642 (/tmp/chk/matmul)
+==PROF== Profiling "mm_kernel": 0%....50%....100% - 7 passes
+N = 1024, TILE_DIM = 16, 행렬 하나당 4.0 MB
+CPU 참조 대조: 일치
+naive:    1.754 ms  ( 1224.6 GFLOP/s)
+tiled:    1.283 ms  ( 1674.2 GFLOP/s)
+정확성: PASS
+배속: 1.37x
+==PROF== Disconnected from process 38642
+[38642] matmul@127.0.0.1
+  mm_kernel(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %         2.19
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        93.21
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        98.11
+    ------------------------------------------------------ ----------- ------------
+
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_tiled_kernel --launch-count 1 ./matmul 1024 16
+==PROF== Connected to process 38684 (/tmp/chk/matmul)
+==PROF== Profiling "mm_tiled_kernel": 0%....50%....100% - 7 passes
+N = 1024, TILE_DIM = 16, 행렬 하나당 4.0 MB
+CPU 참조 대조: 일치
+naive:    1.752 ms  ( 1225.7 GFLOP/s)
+tiled:    1.356 ms  ( 1583.5 GFLOP/s)
+정확성: PASS
+배속: 1.29x
+==PROF== Disconnected from process 38684
+[38684] matmul@127.0.0.1
+  void mm_tiled_kernel<16>(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %         3.66
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        96.25
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        98.01
+    ------------------------------------------------------ ----------- ------------
+
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_kernel --launch-count 1 ./matmul 4096 16
+==PROF== Connected to process 38730 (/tmp/chk/matmul)
+==PROF== Profiling "mm_kernel": 0%....50%....100% - 7 passes
+N = 4096, TILE_DIM = 16, 행렬 하나당 64.0 MB
+naive:  136.071 ms  ( 1010.1 GFLOP/s)
+tiled:   84.035 ms  ( 1635.5 GFLOP/s)
+정확성: PASS
+배속: 1.62x
+==PROF== Disconnected from process 38730
+[38730] matmul@127.0.0.1
+  mm_kernel(float *, float *, float *, unsigned int) (256, 256, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %        45.74
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        72.09
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        99.87
+    ------------------------------------------------------ ----------- ------------
+
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_tiled_kernel --launch-count 1 ./matmul 4096 16
+==PROF== Connected to process 38772 (/tmp/chk/matmul)
+==PROF== Profiling "mm_tiled_kernel": 0%....50%....100% - 7 passes
+N = 4096, TILE_DIM = 16, 행렬 하나당 64.0 MB
+naive:  137.271 ms  ( 1001.2 GFLOP/s)
+tiled:   84.233 ms  ( 1631.7 GFLOP/s)
+정확성: PASS
+배속: 1.63x
+==PROF== Disconnected from process 38772
+[38772] matmul@127.0.0.1
+  void mm_tiled_kernel<16>(float *, float *, float *, unsigned int) (256, 256, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %        72.37
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        86.26
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        99.87
+    ------------------------------------------------------ ----------- ------------
+
+
+$ ncu --set basic ./matmul 1024 16
+==PROF== Connected to process 38819 (/tmp/chk/matmul)
+==PROF== Profiling "mm_kernel" - 0: 0%....50%....100% - 8 passes
+==PROF== Profiling "mm_kernel" - 1: 0%....50%....100% - 8 passes
+==PROF== Profiling "mm_tiled_kernel" - 2: 0%....50%....100% - 8 passes
+==PROF== Profiling "mm_tiled_kernel" - 3: 0%....50%....100% - 8 passes
+N = 1024, TILE_DIM = 16, 행렬 하나당 4.0 MB
+CPU 참조 대조: 일치
+naive:   73.878 ms  (   29.1 GFLOP/s)
+tiled:   67.712 ms  (   31.7 GFLOP/s)
+정확성: PASS
+배속: 1.09x
+==PROF== Disconnected from process 38819
+[38819] matmul@127.0.0.1
+  mm_kernel(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         8.74
+    SM Frequency                    Ghz         2.53
+    Elapsed Cycles                cycle      4243994
+    Memory Throughput                 %        93.14
+    DRAM Throughput                   %         2.18
+    Duration                         ms         1.67
+    L1/TEX Cache Throughput           %        93.71
+    L2 Cache Throughput               %        22.24
+    SM Active Cycles              cycle   4218784.59
+    Compute (SM) Throughput           %        93.14
+    ----------------------- ----------- ------------
+
+    INF   This workload is utilizing greater than 80.0% of the available compute or memory performance of this device.  
+          To further improve performance, work will likely need to be shifted from the most utilized to another unit.   
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              34
+    Shared Memory Configuration Size           Kbyte           16.38
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block        byte/block               0
+    # SMs                                         SM              34
+    Stack Size                                                  1024
+    Threads                                   thread         1048576
+    # TPCs                                                        17
+    Enabled TPC IDs                                              all
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           16
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.12
+    Achieved Active Warps Per SM           warp        47.10
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       318788
+    Total DRAM Elapsed Cycles        cycle     58561536
+    Average L1 Active Cycles         cycle   4218784.59
+    Total L1 Elapsed Cycles          cycle    144307330
+    Average L2 Active Cycles         cycle   3366935.25
+    Total L2 Elapsed Cycles          cycle     54254656
+    Average SM Active Cycles         cycle   4218784.59
+    Total SM Elapsed Cycles          cycle    144307330
+    Average SMSP Active Cycles       cycle   4218760.50
+    Total SMSP Elapsed Cycles        cycle    577229320
+    -------------------------- ----------- ------------
+
+  mm_kernel(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         6.65
+    SM Frequency                    Ghz         1.93
+    Elapsed Cycles                cycle      4559039
+    Memory Throughput                 %        93.16
+    DRAM Throughput                   %         3.82
+    Duration                         ms         2.37
+    L1/TEX Cache Throughput           %        93.70
+    L2 Cache Throughput               %        21.71
+    SM Active Cycles              cycle   4219231.79
+    Compute (SM) Throughput           %        93.16
+    ----------------------- ----------- ------------
+
+    INF   This workload is utilizing greater than 80.0% of the available compute or memory performance of this device.  
+          To further improve performance, work will likely need to be shifted from the most utilized to another unit.   
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              34
+    Shared Memory Configuration Size           Kbyte           16.38
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block        byte/block               0
+    # SMs                                         SM              34
+    Stack Size                                                  1024
+    Threads                                   thread         1048576
+    # TPCs                                                        17
+    Enabled TPC IDs                                              all
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           16
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.10
+    Achieved Active Warps Per SM           warp        47.09
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       601380
+    Total DRAM Elapsed Cycles        cycle     62941184
+    Average L1 Active Cycles         cycle   4219231.79
+    Total L1 Elapsed Cycles          cycle    144275788
+    Average L2 Active Cycles         cycle   3367873.75
+    Total L2 Elapsed Cycles          cycle     58303576
+    Average SM Active Cycles         cycle   4219231.79
+    Total SM Elapsed Cycles          cycle    144275788
+    Average SMSP Active Cycles       cycle   4219207.59
+    Total SMSP Elapsed Cycles        cycle    577103152
+    -------------------------- ----------- ------------
+
+  void mm_tiled_kernel<16>(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         8.74
+    SM Frequency                    Ghz         2.53
+    Elapsed Cycles                cycle      3081966
+    Memory Throughput                 %        90.58
+    DRAM Throughput                   %         3.57
+    Duration                         ms         1.22
+    L1/TEX Cache Throughput           %        96.73
+    L2 Cache Throughput               %        20.25
+    SM Active Cycles              cycle   3066864.82
+    Compute (SM) Throughput           %        90.58
+    ----------------------- ----------- ------------
+
+    INF   This workload is utilizing greater than 80.0% of the available compute or memory performance of this device.  
+          To further improve performance, work will likely need to be shifted from the most utilized to another unit.   
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              36
+    Shared Memory Configuration Size           Kbyte           65.54
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block       Kbyte/block            2.05
+    # SMs                                         SM              34
+    Stack Size                                                  1024
+    Threads                                   thread         1048576
+    # TPCs                                                        17
+    Enabled TPC IDs                                              all
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           21
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.02
+    Achieved Active Warps Per SM           warp        47.05
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       379300
+    Total DRAM Elapsed Cycles        cycle     42541056
+    Average L1 Active Cycles         cycle   3066864.82
+    Total L1 Elapsed Cycles          cycle    111354428
+    Average L2 Active Cycles         cycle   2405450.50
+    Total L2 Elapsed Cycles          cycle     39412880
+    Average SM Active Cycles         cycle   3066864.82
+    Total SM Elapsed Cycles          cycle    111354428
+    Average SMSP Active Cycles       cycle   3066841.32
+    Total SMSP Elapsed Cycles        cycle    445417712
+    -------------------------- ----------- ------------
+
+  void mm_tiled_kernel<16>(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         8.74
+    SM Frequency                    Ghz         2.53
+    Elapsed Cycles                cycle      3082667
+    Memory Throughput                 %        96.27
+    DRAM Throughput                   %         3.55
+    Duration                         ms         1.22
+    L1/TEX Cache Throughput           %        96.73
+    L2 Cache Throughput               %        20.24
+    SM Active Cycles              cycle   3066679.03
+    Compute (SM) Throughput           %        96.27
+    ----------------------- ----------- ------------
+
+    INF   This workload is utilizing greater than 80.0% of the available compute or memory performance of this device.  
+          To further improve performance, work will likely need to be shifted from the most utilized to another unit.   
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              36
+    Shared Memory Configuration Size           Kbyte           65.54
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block       Kbyte/block            2.05
+    # SMs                                         SM              34
+    Stack Size                                                  1024
+    Threads                                   thread         1048576
+    # TPCs                                                        17
+    Enabled TPC IDs                                              all
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           21
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.02
+    Achieved Active Warps Per SM           warp        47.05
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       377700
+    Total DRAM Elapsed Cycles        cycle     42547200
+    Average L1 Active Cycles         cycle   3066679.03
+    Total L1 Elapsed Cycles          cycle    104767516
+    Average L2 Active Cycles         cycle   2404069.81
+    Total L2 Elapsed Cycles          cycle     39418640
+    Average SM Active Cycles         cycle   3066679.03
+    Total SM Elapsed Cycles          cycle    104767516
+    Average SMSP Active Cycles       cycle   3066655.53
+    Total SMSP Elapsed Cycles        cycle    419070064
+    -------------------------- ----------- ------------
+
+
+=================== lab09-convolution ===================
+[정답본 적용: solutions/lab09]
+
+$ ./conv_const
+입력: 합성 사선 무늬 (4096 x 4096)
+FILTER_RADIUS = 2  (FILTER_DIM = 5)
+커널        :     0.55 ms
+유효 대역폭 :    242.3 GB/s
+연산 처리율 :   1514.2 GFLOP/s
+연산/바이트 :      6.2 FLOP/B  (최소 트래픽 기준)
+슬라이드 20 :     0.48 FLOP/B  (커널이 요청하는 전역 접근 기준)
+정확성: PASS
+
+$ ./conv_global
+입력: 합성 사선 무늬 (4096 x 4096)
+FILTER_RADIUS = 2  (FILTER_DIM = 5)
+커널        :     0.67 ms
+유효 대역폭 :    198.9 GB/s
+연산 처리율 :   1243.1 GFLOP/s
+연산/바이트 :      6.2 FLOP/B  (최소 트래픽 기준)
+슬라이드 20 :     0.25 FLOP/B  (필터도 전역에서 읽는다)
+정확성: PASS
+
+$ bash sweep.sh
+이미지 4096x4096, FILTER_RADIUS = 1 2 4 8
+
+ RADIUS     DIM   const ms       GB/s    GFLOP/s     FLOP/B  global ms   비율
+      1       3       0.56      238.8      537.4        2.2       0.53     0.95
+      2       5       0.55      243.3     1520.5        6.2       0.67     1.22
+      4       9       1.48       90.6     1834.3       20.2       2.75     1.86
+      8      17       5.03       26.7     1927.3       72.2       7.29     1.45
+
+=================== lab10-histogram ===================
+[정답본 적용: solutions/lab10]
+
+$ ./histogram
+N = 67108864, 분포 = 균등
+  bin 0: 기대 261949 실제 2340
+race    :    3.40 ms   합계 589289   (기대 67108864)   FAIL
+atomic  :   16.85 ms   합계 67108864                     PASS
+private :    2.66 ms   합계 67108864                     PASS
+
+$ ./histogram
+N = 67108864, 분포 = 균등
+  bin 0: 기대 261949 실제 2359
+race    :    3.39 ms   합계 590263   (기대 67108864)   FAIL
+atomic  :   16.67 ms   합계 67108864                     PASS
+private :    2.86 ms   합계 67108864                     PASS
+
+$ ./histogram
+N = 67108864, 분포 = 균등
+  bin 0: 기대 261949 실제 2343
+race    :    3.70 ms   합계 593083   (기대 67108864)   FAIL
+atomic  :   16.74 ms   합계 67108864                     PASS
+private :    2.58 ms   합계 67108864                     PASS
+
+$ ./histogram --skewed
+N = 67108864, 분포 = 치우침
+  bin 0: 기대 13474336 실제 2060
+race    :    5.24 ms   합계 483479   (기대 67108864)   FAIL
+atomic  :   20.99 ms   합계 67108864                     PASS
+private :    2.22 ms   합계 67108864                     PASS
+
+=================== lab11-reduction ===================
+[정답본 적용: solutions/lab11]
+
+$ ./assoc
+big                 = 16777216.0
+(big + 1.0f) + 1.0f = 16777216.0
+big + (1.0f + 1.0f) = 16777218.0
+
+$ ./reduce
+N = 67108864 (256.0 MB), BLOCK_DIM = 256, COARSE_FACTOR = 4
+이론 대역폭 = 288.0 GB/s
+
+CPU (float,  순차): 16777216.000000
+CPU (double, 순차): 33557630.328125
+
+=== 합계 ===
+  불일치: 기대 33557630.328125  실제 16777216.000000  (상대오차 5.000e-01)
+atomic     : 16777216.000000   검증 FAIL
+naive      : 33557580.000000   검증 PASS
+coalesced  : 33557576.000000   검증 PASS
+shared     : 33557568.000000   검증 PASS
+coarsened  : 33557644.000000   검증 PASS
+
+=== 성능 ===
+atomic     :   95.407 ms      2.8 GB/s  (이론 대비   1.0%)
+naive      :    2.052 ms    130.8 GB/s  (이론 대비  45.4%)
+coalesced  :    1.695 ms    158.3 GB/s  (이론 대비  55.0%)
+shared     :    1.071 ms    250.6 GB/s  (이론 대비  87.0%)
+coarsened  :    1.110 ms    241.8 GB/s  (이론 대비  84.0%)
+
+=================== lab12-scan ===================
+[정답본 적용: solutions/lab12]
+
+$ ./scan
+N = 1048576, BLOCK_DIM = 1024,  반복 1000회 평균
+왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.
+race      :  0.044 ms   (전체  0.058 ms)   FAIL   첫 불일치 idx=159424  기대 79730.742188  실제 80054.539062
+global    :  0.047 ms   (전체  0.067 ms)   PASS
+shared    :  0.049 ms   (전체  0.062 ms)   PASS
+double    :  0.042 ms   (전체  0.074 ms)   PASS
+exclusive :  0.041 ms   (전체  0.056 ms)   PASS
+
+$ ./scan
+N = 1048576, BLOCK_DIM = 1024,  반복 1000회 평균
+왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.
+race      :  0.044 ms   (전체  0.059 ms)   FAIL   첫 불일치 idx=241888  기대 120887.890625  실제 121201.718750
+global    :  0.048 ms   (전체  0.062 ms)   PASS
+shared    :  0.048 ms   (전체  0.069 ms)   PASS
+double    :  0.043 ms   (전체  0.057 ms)   PASS
+exclusive :  0.042 ms   (전체  0.058 ms)   PASS
+
+$ ./scan
+N = 1048576, BLOCK_DIM = 1024,  반복 1000회 평균
+왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.
+race      :  0.044 ms   (전체  0.058 ms)   FAIL   첫 불일치 idx=151744  기대 75909.148438  실제 76220.234375
+global    :  0.047 ms   (전체  0.061 ms)   PASS
+shared    :  0.048 ms   (전체  0.062 ms)   PASS
+double    :  0.042 ms   (전체  0.058 ms)   PASS
+exclusive :  0.043 ms   (전체  0.061 ms)   PASS
+
+=================== lab13-stencil ===================
+[정답본 적용: solutions/lab13]
+
+$ ./stencil 256
+N = 256  (입력 64.0 MB + 출력 64.0 MB, L2 32MB 초과)
+IN_TILE_DIM = 8 (3D 타일링, OUT_TILE_DIM = 6),  32 (2D 슬라이스, OUT_TILE_DIM = 30)
+이론 대역폭 = 288.0 GB/s
+
+커널        시간      GB/s 이론대비 공유메모리/블록 SM당 블록 공유MEM 한계 검증
+basic        0.55 ms     243.4     84.5%            0 B           3  제한없음   PASS
+tiled        0.74 ms     180.7     62.7%         2048 B           3            50   PASS
+coarse       0.65 ms     207.9     72.2%        12288 B           1             8   PASS
+register     0.62 ms     216.3     75.1%         4096 B           1            25   PASS
+
+블록당 스레드: basic 512, tiled 512, coarse/register 1024   (SM당 최대 1536 스레드)
+"SM당 블록" 은 실제 값이고, "공유MEM 한계" 는 공유 메모리만 따졌을 때
+들어갈 수 있는 블록 수다. 둘이 다르면 공유 메모리가 아닌 다른 것이 막고 있다.
+
+$ bash sweep.sh all
+N = 256  (입력 64.0 MB + 출력 64.0 MB, L2 32MB 초과)
+IN_TILE_DIM = 8 (3D 타일링, OUT_TILE_DIM = 6),  32 (2D 슬라이스, OUT_TILE_DIM = 30)
+이론 대역폭 = 288.0 GB/s
+
+커널        시간      GB/s 이론대비 공유메모리/블록 SM당 블록 공유MEM 한계 검증
+basic        0.53 ms     251.9     87.5%            0 B           3  제한없음   PASS
+tiled        0.72 ms     186.7     64.8%         2048 B           3            50   PASS
+coarse       0.68 ms     198.0     68.8%        12288 B           1             8   PASS
+register     0.60 ms     224.7     78.0%         4096 B           1            25   PASS
+
+블록당 스레드: basic 512, tiled 512, coarse/register 1024   (SM당 최대 1536 스레드)
+"SM당 블록" 은 실제 값이고, "공유MEM 한계" 는 공유 메모리만 따졌을 때
+들어갈 수 있는 블록 수다. 둘이 다르면 공유 메모리가 아닌 다른 것이 막고 있다.
+
+$ bash sweep.sh tile
+3D 타일링 스윕 — N=256, IN_TILE_DIM = 6 8 10 12
+
+  IN_TILE    OUT_TILE 스레드/블록     시간      GB/s 공유메모리
+        6           4       216    0.94 ms     142.5      49.5% B
+        8           6       512    0.72 ms     186.9      64.9% B
+       10           8      1000    0.97 ms     137.9      47.9% B
+       12          10      1728   실행 불가
+           | IN_TILE_DIM=12 는 3D 블록에서 1728 스레드가 되어 블록당 최대 1024 를 넘는다.
+           | 슬라이드 19~22 가 말하는 한계가 이것이다.
+
+빌드를 기본값으로 되돌린다.
+
+=================== 요약 ===================
+아래 항목이 비어 있어야 정상이다.
+
+--- TODO 미완성 (정답본 누락)
+
+--- 빌드 오류
+
+확인은 4060-검증-체크리스트.md 의 항목별 기준을 따른다.

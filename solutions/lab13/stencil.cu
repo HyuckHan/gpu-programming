@@ -440,9 +440,15 @@ int main(int argc, char** argv) {
     // 낭비가 많은 버전일수록 이 값이 낮게 나오는 것이 의도한 동작이다.
     double traffic = 2.0*(double)count*sizeof(float);
 
+    // 이론 대비 몇 %까지 갔는지가 이 랩의 핵심 숫자다. basic 이 이미 이론의
+    // 대부분을 쓰고 있으면, 그 위에서 최적화로 더 얻을 것이 남아 있지 않다.
+    float bw_peak = theoretical_bandwidth_GBps();
+    if (bw_peak > 0.0f) printf("이론 대역폭 = %.1f GB/s\n", bw_peak);
+
     printf("\n");
-    printf("%-9s %10s %9s %14s %11s %13s %6s\n",
-           "커널", "시간", "GB/s", "공유메모리/블록", "SM당 블록", "공유MEM 한계", "검증");
+    printf("%-9s %10s %9s %9s %14s %11s %13s %6s\n",
+           "커널", "시간", "GB/s", "이론대비", "공유메모리/블록", "SM당 블록",
+           "공유MEM 한계", "검증");
     for (int k = 0; k < NUM_KERNELS; ++k) {
         int lim = blocks_by_shared(smem[k]);
         char limbuf[16];
@@ -450,12 +456,16 @@ int main(int argc, char** argv) {
         else         snprintf(limbuf, sizeof(limbuf), "%d", lim);
 
         if (k == 3 && !register_done) {
-            printf("%-9s %10s %9s %12zu B %11d %13s   (미구현)\n",
-                   KERNEL_NAMES[k], "-", "-", smem[k], bpsm[k], limbuf);
+            printf("%-9s %10s %9s %9s %12zu B %11d %13s   (미구현)\n",
+                   KERNEL_NAMES[k], "-", "-", "-", smem[k], bpsm[k], limbuf);
             continue;
         }
-        printf("%-9s %7.2f ms %9.1f %12zu B %11d %13s %6s\n",
-               KERNEL_NAMES[k], ms[k], traffic/(ms[k]/1e3)/1e9, smem[k], bpsm[k], limbuf,
+        double gbps = traffic/(ms[k]/1e3)/1e9;
+        char pctbuf[16];
+        if (bw_peak > 0.0f) snprintf(pctbuf, sizeof(pctbuf), "%.1f%%", 100.0*gbps/bw_peak);
+        else                snprintf(pctbuf, sizeof(pctbuf), "%s", "-");
+        printf("%-9s %7.2f ms %9.1f %9s %12zu B %11d %13s %6s\n",
+               KERNEL_NAMES[k], ms[k], gbps, pctbuf, smem[k], bpsm[k], limbuf,
                ok[k] ? "PASS" : "FAIL");
     }
     printf("\n블록당 스레드: basic %d, tiled %d, coarse/register %d   (SM당 최대 %d 스레드)\n",

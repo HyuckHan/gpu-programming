@@ -87,7 +87,8 @@ int main(int argc, char** argv) {
     }
 
     size_t bytes = (size_t)N*sizeof(float);
-    printf("N = %d, iters = %d, blockDim = %d\n\n", N, iters, blockDim_);
+    printf("N = %d, iters = %d, blockDim = %d\n", N, iters, blockDim_);
+    printf("커널마다 예열 1회 뒤 5회 측정, 그중 가장 빠른 값을 쓴다.\n\n");
 
     float* out = (float*)malloc(bytes);
     init_data(out, N, 1u);
@@ -103,27 +104,42 @@ int main(int argc, char** argv) {
     float ms_div = 0.0f, ms_uni = 0.0f;
     double sum_div = 0.0, sum_uni = 0.0;
 
-    // 분기 있음 — 예열 뒤 측정한다. 되돌리는 시간은 재지 않는다.
+    // 커널마다 예열 한 번 뒤 MEASURE_RUNS 번 재고 그중 가장 빠른 값을 쓴다.
+    //
+    // 한 번만 재면 그 순간 다른 프로그램이 GPU 를 건드리거나 클럭이 잠깐
+    // 내려가는 것을 그대로 뒤집어쓴다. 실제로 열 번에 한두 번쯤 한쪽이
+    // 1.5배까지 느리게 찍혔고, 그러면 비율이 1.3배나 2.9배로 튀었다.
+    // 방해는 시간을 늘리기만 하므로, 여러 번 재서 가장 빠른 값을 고르면
+    // 방해받지 않은 실행을 고르는 셈이 된다.
+    //
+    // 되돌리는 시간과 예열 시간은 측정에 들어가지 않는다.
+#define MEASURE_RUNS 5
+
     CUDA_CHECK(cudaMemcpy(out_d, out_orig_d, bytes, cudaMemcpyDeviceToDevice));
-    launch_divergent(grid, blockDim_, out_d, N, iters);
+    launch_divergent(grid, blockDim_, out_d, N, iters);        // 예열
     CUDA_CHECK(cudaDeviceSynchronize());
-    CUDA_CHECK(cudaMemcpy(out_d, out_orig_d, bytes, cudaMemcpyDeviceToDevice));
-    timer.start();
-    launch_divergent(grid, blockDim_, out_d, N, iters);
-    ms_div = timer.stop();
-    CUDA_CHECK(cudaGetLastError());
+    for (int r = 0; r < MEASURE_RUNS; ++r) {
+        CUDA_CHECK(cudaMemcpy(out_d, out_orig_d, bytes, cudaMemcpyDeviceToDevice));
+        timer.start();
+        launch_divergent(grid, blockDim_, out_d, N, iters);
+        float ms = timer.stop();
+        CUDA_CHECK(cudaGetLastError());
+        if (r == 0 || ms < ms_div) ms_div = ms;
+    }
     CUDA_CHECK(cudaMemcpy(out, out_d, bytes, cudaMemcpyDeviceToHost));
     sum_div = sum_of(out, N);
 
-    // 분기 없음
     CUDA_CHECK(cudaMemcpy(out_d, out_orig_d, bytes, cudaMemcpyDeviceToDevice));
-    launch_uniform(grid, blockDim_, out_d, N, iters);
+    launch_uniform(grid, blockDim_, out_d, N, iters);          // 예열
     CUDA_CHECK(cudaDeviceSynchronize());
-    CUDA_CHECK(cudaMemcpy(out_d, out_orig_d, bytes, cudaMemcpyDeviceToDevice));
-    timer.start();
-    launch_uniform(grid, blockDim_, out_d, N, iters);
-    ms_uni = timer.stop();
-    CUDA_CHECK(cudaGetLastError());
+    for (int r = 0; r < MEASURE_RUNS; ++r) {
+        CUDA_CHECK(cudaMemcpy(out_d, out_orig_d, bytes, cudaMemcpyDeviceToDevice));
+        timer.start();
+        launch_uniform(grid, blockDim_, out_d, N, iters);
+        float ms = timer.stop();
+        CUDA_CHECK(cudaGetLastError());
+        if (r == 0 || ms < ms_uni) ms_uni = ms;
+    }
     CUDA_CHECK(cudaMemcpy(out, out_d, bytes, cudaMemcpyDeviceToHost));
     sum_uni = sum_of(out, N);
 

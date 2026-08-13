@@ -45,6 +45,8 @@
 | `slides/` | 강의 덱. 제3자 자료라 추적하지 않는다 |
 | `solutions/` | 각 랩의 `// TODO:` 를 채운 정답본. 배포 zip 에는 들어가지 않는다 |
 | `check_solutions.sh` | 정답본으로 전 랩을 빌드·실행한다 |
+| `check.sh` | 전 랩을 관찰용까지 포함해 돌린다. 결과를 `logs/` 에 남긴다 |
+| `logs/` | `check.sh` 출력. GPU·툴킷이 바뀔 때 diff 로 대조한다 |
 | `Makefile` | `make dist` — 배포 zip 을 만든다 |
 
 ## 빌드
@@ -56,9 +58,10 @@
 뜨고 원인을 찾기 어렵다.
 
 > sm_120(RTX 50 시리즈)은 CUDA 12.8 이상이 있어야 컴파일된다.
-> 현재 툴킷이 12.4 라면 그 PC 에서는 툴킷을 먼저 올려야 한다.
+> 개발 PC 는 13.3 으로 올렸고 전 랩이 sm_120 으로 컴파일되는 것을 확인했다.
+> 툴킷이 낮은 PC 가 있으면 그 PC 에서 먼저 올려야 한다.
 
-툴킷이 sm_120 을 아는지 미리 확인하려면 nvcc 에 직접 물어본다.
+툴킷이 sm_120 을 아는지 확인하려면 nvcc 에 직접 물어본다.
 
 ```
 nvcc -arch=sm_120 -O3 -I common -c labs/lab05-matmul/matmul.cu -o /dev/null
@@ -67,6 +70,12 @@ nvcc -arch=sm_120 -O3 -I common -c labs/lab05-matmul/matmul.cu -o /dev/null
 12.8 미만이면 `nvcc fatal : Value 'sm_120' is not defined` 로 끝난다.
 `make ARCH=sm_120` 으로는 확인되지 않는다. `-arch=native` 로 바꾸면서
 `ARCH` 변수를 없앴기 때문에, 그 명령은 아무 일도 하지 않고 그냥 통과한다.
+
+CUDA 를 `/usr/local/cuda` 에 설치했다면 PATH 에 넣어야 `make` 가 된다.
+
+```
+export PATH=/usr/local/cuda/bin:$PATH
+```
 
 `common.cuh` 는 저장소에서는 `common/` 에, 배포 zip 에서는 랩 디렉터리에 함께
 들어간다. Makefile 이 양쪽을 다 찾으므로 소스의 include 는 `"common.cuh"` 하나다.

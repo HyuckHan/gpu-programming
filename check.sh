@@ -33,6 +33,8 @@ prepare() {
   if [ -d "$ROOT/solutions/$key" ]; then
     cp "$ROOT/solutions/$key"/* "$WORK/" 2>/dev/null
     echo "[정답본 적용: solutions/$key]"
+  elif [ "$key" = "lab08" ]; then
+    echo "[lab08 — lab06 정답본을 matmul.cu 로 사용. 채울 TODO 가 없는 랩이다]"
   else
     echo "[정답본 없음: $key — TODO 상태로 실행됨]"
   fi
@@ -82,7 +84,8 @@ run_lab() {
       ;;
     lab07-*)
       run "./matmul 4096 16 4"
-      run "bash sweep.sh size"
+      run "./transpose 4096 32"
+      run "bash sweep.sh transpose"
       run "bash sweep.sh coarse"
       ;;
     lab08-*)
