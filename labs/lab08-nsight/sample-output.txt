@@ -1,0 +1,398 @@
+이 파일은 실제 실행 출력이다. 개발 PC(RTX 4060 Ti, sm_89, CUDA 12.4,
+Nsight Compute 2024.1.1, WSL2)에서 얻었다. 숫자는 PC마다 다르게 나온다.
+
+==============================================================
+$ ncu --version
+==============================================================
+NVIDIA (R) Nsight Compute Command Line Profiler
+Copyright (c) 2018-2024 NVIDIA Corporation
+Version 2024.1.1.0 (build 33998838) (public-release)
+
+==============================================================
+$ ncu --metrics <세 지표> --kernel-name mm_kernel --launch-count 1 ./matmul 1024 16
+==============================================================
+==PROF== Connected to process 23027 (/tmp/claude-1000/-home-hhyuck-Projects-gpu-programming/391feae8-7239-4849-9400-046dbe26121f/scratchpad/lab08/matmul)
+==PROF== Profiling "mm_kernel": 0%....50%....100% - 7 passes
+N = 1024, TILE_DIM = 16, 행렬 하나당 4.0 MB
+CPU 참조 대조: 일치
+naive:    1.710 ms  ( 1256.0 GFLOP/s)
+tiled:    1.297 ms  ( 1656.3 GFLOP/s)
+정확성: PASS
+배속: 1.32x
+==PROF== Disconnected from process 23027
+[23027] matmul@127.0.0.1
+  mm_kernel(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %         1.76
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        93.25
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        98.10
+    ------------------------------------------------------ ----------- ------------
+
+
+==============================================================
+$ ncu --metrics <세 지표> --kernel-name mm_tiled_kernel --launch-count 1 ./matmul 1024 16
+==============================================================
+==PROF== Connected to process 23053 (/tmp/claude-1000/-home-hhyuck-Projects-gpu-programming/391feae8-7239-4849-9400-046dbe26121f/scratchpad/lab08/matmul)
+==PROF== Profiling "mm_tiled_kernel": 0%....50%....100% - 7 passes
+N = 1024, TILE_DIM = 16, 행렬 하나당 4.0 MB
+CPU 참조 대조: 일치
+naive:    1.675 ms  ( 1281.9 GFLOP/s)
+tiled:    1.233 ms  ( 1741.7 GFLOP/s)
+정확성: PASS
+배속: 1.36x
+==PROF== Disconnected from process 23053
+[23053] matmul@127.0.0.1
+  void mm_tiled_kernel<(unsigned int)16>(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %         3.60
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        96.27
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        98.01
+    ------------------------------------------------------ ----------- ------------
+
+
+==============================================================
+$ ncu --metrics <세 지표> --kernel-name mm_kernel --launch-count 1 ./matmul 4096 16
+==============================================================
+==PROF== Connected to process 23079 (/tmp/claude-1000/-home-hhyuck-Projects-gpu-programming/391feae8-7239-4849-9400-046dbe26121f/scratchpad/lab08/matmul)
+==PROF== Profiling "mm_kernel": 0%....50%....100% - 7 passes
+N = 4096, TILE_DIM = 16, 행렬 하나당 64.0 MB
+naive:  139.055 ms  (  988.4 GFLOP/s)
+tiled:   86.996 ms  ( 1579.8 GFLOP/s)
+정확성: PASS
+배속: 1.60x
+==PROF== Disconnected from process 23079
+[23079] matmul@127.0.0.1
+  mm_kernel(float *, float *, float *, unsigned int) (256, 256, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %        44.31
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        75.67
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        99.87
+    ------------------------------------------------------ ----------- ------------
+
+
+==============================================================
+$ ncu --metrics <세 지표> --kernel-name mm_tiled_kernel --launch-count 1 ./matmul 4096 16
+==============================================================
+==PROF== Connected to process 23105 (/tmp/claude-1000/-home-hhyuck-Projects-gpu-programming/391feae8-7239-4849-9400-046dbe26121f/scratchpad/lab08/matmul)
+==PROF== Profiling "mm_tiled_kernel": 0%....50%....100% - 7 passes
+N = 4096, TILE_DIM = 16, 행렬 하나당 64.0 MB
+naive:  135.719 ms  ( 1012.7 GFLOP/s)
+tiled:   86.428 ms  ( 1590.2 GFLOP/s)
+정확성: PASS
+배속: 1.57x
+==PROF== Disconnected from process 23105
+[23105] matmul@127.0.0.1
+  void mm_tiled_kernel<(unsigned int)16>(float *, float *, float *, unsigned int) (256, 256, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: Command line profiler metrics
+    ------------------------------------------------------ ----------- ------------
+    Metric Name                                            Metric Unit Metric Value
+    ------------------------------------------------------ ----------- ------------
+    gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed           %        68.34
+    sm__throughput.avg.pct_of_peak_sustained_elapsed                 %        88.47
+    sm__warps_active.avg.pct_of_peak_sustained_active                %        99.87
+    ------------------------------------------------------ ----------- ------------
+
+
+==============================================================
+$ ncu --set basic ./matmul 1024 16
+==============================================================
+(네 번의 커널 실행이 모두 나온다. naive 2회, tiled 2회 — 예열과 측정)
+
+==PROF== Connected to process 22954 (/tmp/claude-1000/-home-hhyuck-Projects-gpu-programming/391feae8-7239-4849-9400-046dbe26121f/scratchpad/lab08/matmul)
+==PROF== Profiling "mm_kernel" - 0: 0%....50%....100% - 8 passes
+==PROF== Profiling "mm_kernel" - 1: 0%....50%....100% - 8 passes
+==PROF== Profiling "mm_tiled_kernel" - 2: 0%....50%....100% - 8 passes
+==PROF== Profiling "mm_tiled_kernel" - 3: 0%....50%....100% - 8 passes
+N = 1024, TILE_DIM = 16, 행렬 하나당 4.0 MB
+CPU 참조 대조: 일치
+naive:   63.882 ms  (   33.6 GFLOP/s)
+tiled:   57.941 ms  (   37.1 GFLOP/s)
+정확성: PASS
+배속: 1.10x
+==PROF== Disconnected from process 22954
+[22954] matmul@127.0.0.1
+  mm_kernel(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ------------- ------------
+    Metric Name               Metric Unit Metric Value
+    ----------------------- ------------- ------------
+    DRAM Frequency          cycle/nsecond         8.74
+    SM Frequency            cycle/nsecond         2.31
+    Elapsed Cycles                  cycle      4238433
+    Memory Throughput                   %        93.25
+    DRAM Throughput                     %         6.10
+    Duration                      msecond         1.84
+    L1/TEX Cache Throughput             %        93.79
+    L2 Cache Throughput                 %        22.07
+    SM Active Cycles                cycle   4215015.50
+    Compute (SM) Throughput             %        93.25
+    ----------------------- ------------- ------------
+
+    INF   The kernel is utilizing greater than 80.0% of the available compute or memory performance of the device. To   
+          further improve performance, work will likely need to be shifted from the most utilized to another unit.      
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              34
+    Shared Memory Configuration Size           Kbyte           16.38
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block        byte/block               0
+    # SMs                                         SM              34
+    Threads                                   thread         1048576
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           16
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.11
+    Achieved Active Warps Per SM           warp        47.09
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       978828
+    Total DRAM Elapsed Cycles        cycle     64178176
+    Average L1 Active Cycles         cycle   4215015.50
+    Total L1 Elapsed Cycles          cycle    144138306
+    Average L2 Active Cycles         cycle   3447138.50
+    Total L2 Elapsed Cycles          cycle     55494208
+    Average SM Active Cycles         cycle   4215015.50
+    Total SM Elapsed Cycles          cycle    144138306
+    Average SMSP Active Cycles       cycle   4217428.85
+    Total SMSP Elapsed Cycles        cycle    576553224
+    -------------------------- ----------- ------------
+
+  mm_kernel(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ------------- ------------
+    Metric Name               Metric Unit Metric Value
+    ----------------------- ------------- ------------
+    DRAM Frequency          cycle/nsecond         8.74
+    SM Frequency            cycle/nsecond         2.31
+    Elapsed Cycles                  cycle      4237418
+    Memory Throughput                   %        93.21
+    DRAM Throughput                     %         1.63
+    Duration                      msecond         1.84
+    L1/TEX Cache Throughput             %        93.79
+    L2 Cache Throughput                 %        21.75
+    SM Active Cycles                cycle   4215022.94
+    Compute (SM) Throughput             %        93.21
+    ----------------------- ------------- ------------
+
+    INF   The kernel is utilizing greater than 80.0% of the available compute or memory performance of the device. To   
+          further improve performance, work will likely need to be shifted from the most utilized to another unit.      
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              34
+    Shared Memory Configuration Size           Kbyte           16.38
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block        byte/block               0
+    # SMs                                         SM              34
+    Threads                                   thread         1048576
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           16
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.10
+    Achieved Active Warps Per SM           warp        47.09
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       262296
+    Total DRAM Elapsed Cycles        cycle     64176128
+    Average L1 Active Cycles         cycle   4215022.94
+    Total L1 Elapsed Cycles          cycle    144210406
+    Average L2 Active Cycles         cycle   3444439.81
+    Total L2 Elapsed Cycles          cycle     55489696
+    Average SM Active Cycles         cycle   4215022.94
+    Total SM Elapsed Cycles          cycle    144210406
+    Average SMSP Active Cycles       cycle   4215091.44
+    Total SMSP Elapsed Cycles        cycle    576841624
+    -------------------------- ----------- ------------
+
+  void mm_tiled_kernel<(unsigned int)16>(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ------------- ------------
+    Metric Name               Metric Unit Metric Value
+    ----------------------- ------------- ------------
+    DRAM Frequency          cycle/nsecond         8.74
+    SM Frequency            cycle/nsecond         2.31
+    Elapsed Cycles                  cycle      3081185
+    Memory Throughput                   %        96.31
+    DRAM Throughput                     %         2.25
+    Duration                      msecond         1.34
+    L1/TEX Cache Throughput             %        96.77
+    L2 Cache Throughput                 %        19.69
+    SM Active Cycles                cycle   3065638.85
+    Compute (SM) Throughput             %        96.31
+    ----------------------- ------------- ------------
+
+    INF   The kernel is utilizing greater than 80.0% of the available compute or memory performance of the device. To   
+          further improve performance, work will likely need to be shifted from the most utilized to another unit.      
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              36
+    Shared Memory Configuration Size           Kbyte           65.54
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block       Kbyte/block            2.05
+    # SMs                                         SM              34
+    Threads                                   thread         1048576
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           21
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.01
+    Achieved Active Warps Per SM           warp        47.04
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       262264
+    Total DRAM Elapsed Cycles        cycle     46700544
+    Average L1 Active Cycles         cycle   3065638.85
+    Total L1 Elapsed Cycles          cycle    104727874
+    Average L2 Active Cycles         cycle   2460970.88
+    Total L2 Elapsed Cycles          cycle     40378384
+    Average SM Active Cycles         cycle   3065638.85
+    Total SM Elapsed Cycles          cycle    104727874
+    Average SMSP Active Cycles       cycle   3065570.06
+    Total SMSP Elapsed Cycles        cycle    418911496
+    -------------------------- ----------- ------------
+
+  void mm_tiled_kernel<(unsigned int)16>(float *, float *, float *, unsigned int) (64, 64, 1)x(16, 16, 1), Context 1, Stream 7, Device 0, CC 8.9
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ------------- ------------
+    Metric Name               Metric Unit Metric Value
+    ----------------------- ------------- ------------
+    DRAM Frequency          cycle/nsecond         8.74
+    SM Frequency            cycle/nsecond         2.31
+    Elapsed Cycles                  cycle      3082552
+    Memory Throughput                   %        96.31
+    DRAM Throughput                     %         4.40
+    Duration                      msecond         1.34
+    L1/TEX Cache Throughput             %        96.77
+    L2 Cache Throughput                 %        19.74
+    SM Active Cycles                cycle   3065636.12
+    Compute (SM) Throughput             %        96.31
+    ----------------------- ------------- ------------
+
+    INF   The kernel is utilizing greater than 80.0% of the available compute or memory performance of the device. To   
+          further improve performance, work will likely need to be shifted from the most utilized to another unit.      
+          Start by analyzing workloads in the Compute Workload Analysis section.                                        
+
+    Section: Launch Statistics
+    -------------------------------- --------------- ---------------
+    Metric Name                          Metric Unit    Metric Value
+    -------------------------------- --------------- ---------------
+    Block Size                                                   256
+    Function Cache Configuration                     CachePreferNone
+    Grid Size                                                   4096
+    Registers Per Thread             register/thread              36
+    Shared Memory Configuration Size           Kbyte           65.54
+    Driver Shared Memory Per Block       Kbyte/block            1.02
+    Dynamic Shared Memory Per Block       byte/block               0
+    Static Shared Memory Per Block       Kbyte/block            2.05
+    # SMs                                         SM              34
+    Threads                                   thread         1048576
+    Uses Green Context                                             0
+    Waves Per SM                                               20.08
+    -------------------------------- --------------- ---------------
+
+    Section: Occupancy
+    ------------------------------- ----------- ------------
+    Metric Name                     Metric Unit Metric Value
+    ------------------------------- ----------- ------------
+    Block Limit SM                        block           24
+    Block Limit Registers                 block            6
+    Block Limit Shared Mem                block           21
+    Block Limit Warps                     block            6
+    Theoretical Active Warps per SM        warp           48
+    Theoretical Occupancy                     %          100
+    Achieved Occupancy                        %        98.01
+    Achieved Active Warps Per SM           warp        47.04
+    ------------------------------- ----------- ------------
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle       514268
+    Total DRAM Elapsed Cycles        cycle     46717952
+    Average L1 Active Cycles         cycle   3065636.12
+    Total L1 Elapsed Cycles          cycle    104721562
+    Average L2 Active Cycles         cycle   2458244.19
+    Total L2 Elapsed Cycles          cycle     40395616
+    Average SM Active Cycles         cycle   3065636.12
+    Total SM Elapsed Cycles          cycle    104721562
+    Average SMSP Active Cycles       cycle   3065386.29
+    Total SMSP Elapsed Cycles        cycle    418886248
+    -------------------------- ----------- ------------
+

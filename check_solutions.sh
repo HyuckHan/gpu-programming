@@ -47,6 +47,9 @@ runs_for() {
                echo "./matmul 1024 32" ;;
         lab07) echo "./matmul 4096 16 4"
                echo "./transpose 4096 32" ;;
+        # lab08 은 소스가 없다. ncu 가 세 지표를 실제로 뽑아내는지만 본다.
+        lab08) echo "ncu --version >/dev/null && echo 'ncu OK'"
+               echo "ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_kernel --launch-count 1 ./matmul 1024 16 2>&1 | grep -E 'sm__|gpu__'" ;;
         lab09) echo "./conv_const 2048 2048"
                echo "./conv_global 2048 2048" ;;
         lab10) echo "./histogram 67108864" ;;
@@ -72,11 +75,16 @@ for d in "$ROOT"/labs/*/; do
     [ "$key" = "lab01" ] || cp "$ROOT/common/common.cuh" "$dir/"
     [ "$key" = "lab04" ] && cp "$ROOT/labs/lab02-vecadd/vecadd.cu" "$dir/"
     [ "$key" = "lab09" ] && cp "$ROOT/labs/lab03-blur/pgm.h" "$dir/"
+    # lab08 은 프로파일링만 하는 랩이라 완성된 커널이 필요하다.
+    # 배포 zip 과 같이 lab06 정답본을 matmul.cu 로 넣는다.
+    [ "$key" = "lab08" ] && cp "$ROOT/solutions/lab06/skeleton.cu" "$dir/matmul.cu"
 
     # 정답본으로 덮어쓴다. 파일명이 원본과 같아야 한다.
     if [ -d "$sol" ]; then
         cp "$sol"/* "$dir/"
         tag="정답본"
+    elif [ "$key" = "lab08" ]; then
+        tag="lab06 정답본을 matmul.cu 로 사용"
     else
         tag="정답본 없음 — 원본 그대로"
     fi

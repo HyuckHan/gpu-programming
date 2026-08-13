@@ -6,6 +6,11 @@
 #
 # solutions/ 는 zip 에 절대 들어가지 않는다. 아래 stage 단계가 labs/ 에서만
 # 파일을 복사하고, 마지막에 zip 안을 다시 검사한다.
+#
+# 예외가 하나 있다. lab08 은 프로파일링만 하는 랩이라 완성된 커널이 있어야 한다.
+# lab06 의 TODO 를 못 채운 학생도 실습을 할 수 있어야 하므로 lab06 정답본을
+# matmul.cu 라는 이름으로 넣는다. lab08 은 10주차라 lab06 제출이 이미 끝난
+# 뒤이고, 타일드 커널 완성본은 강의 슬라이드에도 있다.
 
 LABS  := $(notdir $(wildcard labs/lab*))
 DIST  := dist
@@ -14,7 +19,7 @@ STAGE := $(DIST)/.stage
 # 확장자로만 복사한다. 빌드 산출물(확장자 없는 실행 파일)과 out.pgm 이 딸려
 # 들어가지 않게 하려는 것이다.
 # 따옴표가 필요하다. 없으면 셸이 저장소 루트에서 먼저 글롭을 펼쳐 버린다.
-SRC_EXT := "*.cu" "*.c" "*.h" "*.cuh" "*.py" "*.sh"
+SRC_EXT := "*.cu" "*.c" "*.h" "*.cuh" "*.py" "*.sh" "*.txt"
 
 .PHONY: help dist clean
 
@@ -46,6 +51,7 @@ dist:
 	  case "$$lab" in \
 	    lab04-*) cp labs/lab02-vecadd/vecadd.cu "$$stage/" ;; \
 	    lab09-*) cp labs/lab03-blur/pgm.h       "$$stage/" ;; \
+	    lab08-*) cp solutions/lab06/skeleton.cu "$$stage/matmul.cu" ;; \
 	  esac; \
 	  rm -f "$(DIST)/$$lab.zip"; \
 	  (cd "$(STAGE)" && zip -qr "../$$lab.zip" "$$lab"); \
