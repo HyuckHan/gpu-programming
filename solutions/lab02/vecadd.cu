@@ -1,5 +1,5 @@
-// 2주차 — 벡터 덧셈
-// 채울 곳은 // TODO: 두 군데뿐이다. 나머지는 완성된 코드다.
+// lab02 — 벡터 덧셈 (정답본)
+// 스켈레톤의 TODO 한 군데를 채운 것이다. 나머지는 스켈레톤과 같다.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +14,12 @@ __global__ void vecadd_kernel(float* x, float* y, float* z, int N) {
     if(i < N) {
         z[i] = x[i] + y[i];
     }
+}
 
+// 스레드가 최소 N개는 만들어지도록 블록 수를 올림으로 구한다.
+// 실행 구성을 찍는 쪽과 커널을 부르는 쪽이 같은 값을 써야 하므로 함수로 뺐다.
+static unsigned int grid_size(int N, unsigned int numThreadsPerBlock) {
+    return ((unsigned int)N + numThreadsPerBlock - 1)/numThreadsPerBlock;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,8 +47,10 @@ static void vecadd(float* x, float* y, float* z, int N,
 
     // Perform computation on GPU
     //
-    // 올림 나눗셈. N이 numThreadsPerBlock의 배수가 아니어도 뒤쪽 원소가 빠지지 않는다.
-    const unsigned int numBlocks = (N + numThreadsPerBlock - 1)/numThreadsPerBlock;
+    // 정수 나눗셈은 내림이라 슬라이드 12·19 의 N/numThreadsPerBlock 로는 뒤쪽
+    // 원소가 빠진다 (vecadd_naive.cu 가 그렇게 되어 있다). 그래서 올림으로 구한다.
+    // 이 줄은 슬라이드와 다른 유일한 지점이고, 그 대가로 남는 스레드가 생긴다.
+    const unsigned int numBlocks = grid_size(N, numThreadsPerBlock);
 
     timer.start();
     vecadd_kernel <<< numBlocks, numThreadsPerBlock >>> (x_d, y_d, z_d, N);
@@ -81,27 +88,9 @@ static void vecadd_cpu(const float* x, const float* y, float* z, int N) {
     }
 }
 
-// 지금 blockDim에서 SM 하나가 몇 블록을 동시에 올릴 수 있는지 조회해서 찍는다.
-// 수치를 하드코딩하지 않는다. 실행 중인 GPU에 직접 물어본다.
-static void print_occupancy(unsigned int numThreadsPerBlock) {
-    int device = 0;
-    cudaDeviceProp prop;
-    int blocksPerSm = 0;
-    if (cudaGetDevice(&device) != cudaSuccess ||
-        cudaGetDeviceProperties(&prop, device) != cudaSuccess ||
-        cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-            &blocksPerSm, vecadd_kernel, (int)numThreadsPerBlock, 0) != cudaSuccess) {
-        cudaGetLastError();                        // 오류 상태를 남기지 않는다
-        return;
-    }
-    int activeWarps = blocksPerSm*(int)numThreadsPerBlock/prop.warpSize;
-    int maxWarps    = prop.maxThreadsPerMultiProcessor/prop.warpSize;
-    printf("blockDim=%u  SM당 활성 블록 %d  activeWarps/maxWarps = %.1f%%\n",
-           numThreadsPerBlock, blocksPerSm, 100.0*activeWarps/maxWarps);
-}
-
-// --info 로 부르면 이 GPU의 하드웨어 한계만 찍고 끝낸다.
-// 4주차 실습에서 이 값들을 받아적어 occupancy를 손으로 계산한다.
+// --info 로 부르면 이 GPU의 하드웨어 한계와 blockDim별 occupancy를 찍고 끝낸다.
+// SM·워프·occupancy 는 lab04(Ch04) 내용이다. lab02 의 기본 실행 출력에는
+// 일부러 넣지 않았다. 이 랩에서는 아직 근거가 없는 개념이기 때문이다.
 // 수치를 하드코딩하지 않는다. 실행 중인 GPU에 직접 물어본다.
 static void print_device_info(void) {
     int device = 0;
@@ -117,6 +106,23 @@ static void print_device_info(void) {
     printf("SM당 최대 블록 수      : %d\n", prop.maxBlocksPerMultiProcessor);
     printf("SM당 최대 워프 수      : %d\n", prop.maxThreadsPerMultiProcessor/prop.warpSize);
     printf("블록당 최대 스레드 수  : %d\n", prop.maxThreadsPerBlock);
+
+    // blockDim별 실제 occupancy. lab04 에서 손으로 계산한 예상과 대조한다.
+    static const unsigned int BLOCK_DIMS[] = {32, 64, 128, 256, 512, 1024};
+    int maxWarps = prop.maxThreadsPerMultiProcessor/prop.warpSize;
+    printf("\nblockDim  SM당 활성 블록  SM당 활성 스레드  occupancy\n");
+    for (int k = 0; k < 6; ++k) {
+        unsigned int b = BLOCK_DIMS[k];
+        int blocksPerSm = 0;
+        if (cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+                &blocksPerSm, vecadd_kernel, (int)b, 0) != cudaSuccess) {
+            cudaGetLastError();                    // 오류 상태를 남기지 않는다
+            continue;
+        }
+        int activeWarps = blocksPerSm*(int)b/prop.warpSize;
+        printf("%8u  %14d  %16d  %8.1f%%\n",
+               b, blocksPerSm, blocksPerSm*(int)b, 100.0*activeWarps/maxWarps);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -139,10 +145,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // numBlocks 를 찍는다. 이 값에 blockDim 을 곱하면 만들어지는 스레드 수가
+    // 나오고, 그것을 N 과 견주는 것이 이 랩의 핵심 계산이다.
     size_t bytes = (size_t)N*sizeof(float);
-    printf("N = %d, blockDim = %u, 배열 3개 합계 %.1f MB\n",
-           N, numThreadsPerBlock, 3.0*bytes/(1024.0*1024.0));
-    print_occupancy(numThreadsPerBlock);
+    printf("N = %d, blockDim = %u, numBlocks = %u, 배열 3개 합계 %.1f MB\n",
+           N, numThreadsPerBlock, grid_size(N, numThreadsPerBlock),
+           3.0*bytes/(1024.0*1024.0));
     printf("\n");
 
     float* x     = (float*)malloc(bytes);

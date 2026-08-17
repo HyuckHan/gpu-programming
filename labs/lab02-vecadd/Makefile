@@ -1,5 +1,5 @@
 ARCH ?= native
-# 2주차 — 벡터 덧셈
+# lab02 — 벡터 덧셈
 # nvcc 플래그는 여기서 관리한다. 직접 칠 필요 없다.
 
 NVCC := nvcc
@@ -39,7 +39,7 @@ clean:
 	rm -f $(TARGETS)
 
 help:
-	@echo "2주차 — 벡터 덧셈"
+	@echo "lab02 — 벡터 덧셈"
 	@echo ""
 	@echo "  make               vecadd 를 빌드한다"
 	@echo "  make vecadd_naive  관찰용(슬라이드 18)을 빌드한다"

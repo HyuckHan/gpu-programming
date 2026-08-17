@@ -1,4 +1,4 @@
-// 2주차 — 벡터 덧셈 (관찰용)
+// lab02 — 벡터 덧셈 (관찰용)
 // 이 프로그램은 컴파일되고 실행도 된다. 결과를 관찰하는 것이 과제다.
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,23 +77,6 @@ static void vecadd_cpu(const float* x, const float* y, float* z, int N) {
     }
 }
 
-static void print_occupancy(unsigned int numThreadsPerBlock) {
-    int device = 0;
-    cudaDeviceProp prop;
-    int blocksPerSm = 0;
-    if (cudaGetDevice(&device) != cudaSuccess ||
-        cudaGetDeviceProperties(&prop, device) != cudaSuccess ||
-        cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-            &blocksPerSm, vecadd_kernel, (int)numThreadsPerBlock, 0) != cudaSuccess) {
-        cudaGetLastError();
-        return;
-    }
-    int activeWarps = blocksPerSm*(int)numThreadsPerBlock/prop.warpSize;
-    int maxWarps    = prop.maxThreadsPerMultiProcessor/prop.warpSize;
-    printf("blockDim=%u  SM당 활성 블록 %d  activeWarps/maxWarps = %.1f%%\n",
-           numThreadsPerBlock, blocksPerSm, 100.0*activeWarps/maxWarps);
-}
-
 int main(int argc, char** argv) {
 
     int          N                  = (argc > 1) ? atoi(argv[1]) : 9999999;
@@ -109,10 +92,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // 슬라이드 12 그대로 내림으로 구한 numBlocks 를 찍는다.
+    // 이 값에 blockDim 을 곱하면 몇 번째 원소부터 계산되지 않는지 나온다.
     size_t bytes = (size_t)N*sizeof(float);
-    printf("N = %d, blockDim = %u, 배열 3개 합계 %.1f MB\n",
-           N, numThreadsPerBlock, 3.0*bytes/(1024.0*1024.0));
-    print_occupancy(numThreadsPerBlock);
+    printf("N = %d, blockDim = %u, numBlocks = %u, 배열 3개 합계 %.1f MB\n",
+           N, numThreadsPerBlock, N/numThreadsPerBlock,
+           3.0*bytes/(1024.0*1024.0));
     printf("\n");
 
     float* x     = (float*)malloc(bytes);
