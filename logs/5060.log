@@ -1,0 +1,665 @@
+
+=================== 환경 ===================
+
+$ nvidia-smi --query-gpu=name,compute_cap,memory.total --format=csv
+name, compute_cap, memory.total [MiB]
+NVIDIA GeForce RTX 5060, 12.0, 8151 MiB
+
+$ nvcc --version | tail -2
+Cuda compilation tools, release 13.3, V13.3.73
+Build cuda_13.3.r13.3/compiler.38244171_0
+
+$ ncu --version | tail -1
+Version 2026.2.1.0 (build 38283040) (public-release)
+
+=================== lab01-c-warmup ===================
+[정답본 적용: solutions/lab01]
+
+$ ./warmup
+=== 1. 정확성 확인 (손으로 계산할 수 있는 크기) ===
+mat_add       : PASS
+mat_mul       : PASS
+mat_transpose : PASS
+
+=== 2. 큰 크기에서 확인 (N=512) ===
+mat_add       : PASS   (A + 0 = A,  0.1 ms)
+mat_mul       : PASS   (A x I = A,  58.4 ms)
+mat_transpose : PASS   (512x256 두 번 전치 = 원래,  0.5 ms)
+
+못 채운 함수가 있어도 괜찮다. 이 실습은 채점하지 않는다.
+
+$ ./loop_order
+N = 1024
+
+ijk 순서 :   2106.6 ms
+ikj 순서 :    264.9 ms
+비율     :     7.95 배
+
+두 결과의 최대 차이 : 0.000e+00  (같다)
+
+$ ./hello
+=== 1단계: GPU가 보이는지 ===
+GPU 1개를 찾았다.
+
+  [0] NVIDIA GeForce RTX 5060  (compute capability 12.0)
+
+=== 2단계: 커널이 실제로 도는지 ===
+  커널 안에서 인사합니다. threadIdx.x = 0
+  커널 안에서 인사합니다. threadIdx.x = 1
+  커널 안에서 인사합니다. threadIdx.x = 2
+  커널 안에서 인사합니다. threadIdx.x = 3
+
+여기까지 나왔으면 1주차 필수 목표는 끝났다.
+
+=================== lab02-vecadd ===================
+[정답본 적용: solutions/lab02]
+
+$ ./vecadd --info
+GPU                   : NVIDIA GeForce RTX 5060 (compute capability 12.0)
+SM 개수                : 30
+워프 크기              : 32
+SM당 최대 스레드 수    : 1536
+SM당 최대 블록 수      : 24
+SM당 최대 워프 수      : 48
+블록당 최대 스레드 수  : 1024
+
+$ ./vecadd
+N = 9999999, blockDim = 256, 배열 3개 합계 114.4 MB
+blockDim=256  SM당 활성 블록 6  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :    7.470 ms
+커널     :    0.314 ms
+D2H 전송 :    3.299 ms
+─────────────────────────────────────
+전체     :   11.083 ms   (커널 비중 2.8%)
+
+$ ./vecadd_naive
+N = 9999999, blockDim = 256, 배열 3개 합계 114.4 MB
+blockDim=256  SM당 활성 블록 6  activeWarps/maxWarps = 100.0%
+
+  첫 불일치: [9999872]  기대 0.871958  실제 0.000000  (오차/기준크기 8.071e-01)
+검증: FAIL
+
+H2D 전송 :    7.383 ms
+커널     :    0.332 ms
+D2H 전송 :    3.346 ms
+─────────────────────────────────────
+전체     :   11.062 ms   (커널 비중 3.0%)
+
+$ ./vecadd 9999999 32
+N = 9999999, blockDim = 32, 배열 3개 합계 114.4 MB
+blockDim=32  SM당 활성 블록 24  activeWarps/maxWarps = 50.0%
+
+검증: PASS
+
+H2D 전송 :    7.532 ms
+커널     :    0.415 ms
+D2H 전송 :    3.184 ms
+─────────────────────────────────────
+전체     :   11.131 ms   (커널 비중 3.7%)
+
+$ ./vecadd 9999999 64
+N = 9999999, blockDim = 64, 배열 3개 합계 114.4 MB
+blockDim=64  SM당 활성 블록 24  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :    6.923 ms
+커널     :    0.314 ms
+D2H 전송 :    3.409 ms
+─────────────────────────────────────
+전체     :   10.646 ms   (커널 비중 2.9%)
+
+$ ./vecadd 9999999 128
+N = 9999999, blockDim = 128, 배열 3개 합계 114.4 MB
+blockDim=128  SM당 활성 블록 12  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :    7.493 ms
+커널     :    0.334 ms
+D2H 전송 :    3.722 ms
+─────────────────────────────────────
+전체     :   11.549 ms   (커널 비중 2.9%)
+
+$ ./vecadd 9999999 256
+N = 9999999, blockDim = 256, 배열 3개 합계 114.4 MB
+blockDim=256  SM당 활성 블록 6  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :    7.215 ms
+커널     :    0.367 ms
+D2H 전송 :    3.205 ms
+─────────────────────────────────────
+전체     :   10.788 ms   (커널 비중 3.4%)
+
+$ ./vecadd 9999999 512
+N = 9999999, blockDim = 512, 배열 3개 합계 114.4 MB
+blockDim=512  SM당 활성 블록 3  activeWarps/maxWarps = 100.0%
+
+검증: PASS
+
+H2D 전송 :    7.263 ms
+커널     :    0.312 ms
+D2H 전송 :    3.314 ms
+─────────────────────────────────────
+전체     :   10.889 ms   (커널 비중 2.9%)
+
+$ ./vecadd 9999999 1024
+N = 9999999, blockDim = 1024, 배열 3개 합계 114.4 MB
+blockDim=1024  SM당 활성 블록 1  activeWarps/maxWarps = 66.7%
+
+검증: PASS
+
+H2D 전송 :    7.071 ms
+커널     :    0.350 ms
+D2H 전송 :    3.226 ms
+─────────────────────────────────────
+전체     :   10.647 ms   (커널 비중 3.3%)
+
+=================== lab03-blur ===================
+[정답본 적용: solutions/lab03]
+
+$ ./blur 512 512 8
+입력: 합성 사선 무늬 (512 x 512)
+BLUR_SIZE = 8
+
+입력 (좌상단 8x8):
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0 255
+   0   0   0   0   0   0 255 255
+   0   0   0   0   0 255 255 255
+   0   0   0   0 255 255 255 255
+   0   0   0 255 255 255 255 255
+
+GPU 출력 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+CPU 참조 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+커널 시간: 0.634 ms
+검증: PASS
+결과를 out.pgm 으로 저장했다
+
+$ ./blur_naive 512 512 8
+입력: 합성 사선 무늬 (512 x 512)
+BLUR_SIZE = 8
+
+입력 (좌상단 8x8):
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0 255
+   0   0   0   0   0   0 255 255
+   0   0   0   0   0 255 255 255
+   0   0   0   0 255 255 255 255
+   0   0   0 255 255 255 255 255
+
+GPU 출력: 없음 — 커널이 끝까지 실행되지 못했다
+  an illegal memory access was encountered
+
+CPU 참조 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+검증: FAIL
+
+$ compute-sanitizer --print-limit 3 ./blur_naive 512 512 8
+========= COMPUTE-SANITIZER
+========= Invalid __global__ read of size 1 bytes
+=========     at blur_kernel(unsigned char *, unsigned char *, unsigned int, unsigned int, int)+0x400 in blur_naive.cu:23
+=========     by thread (0,4,0) in block (0,0,0)
+=========     Access to 0x80adff7f8 is out of bounds
+=========     and is 4294440953 bytes after the nearest allocation at 0x70ae40000 of size 262144 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x92b7] in blur_naive
+========= 
+========= Invalid __global__ read of size 1 bytes
+=========     at blur_kernel(unsigned char *, unsigned char *, unsigned int, unsigned int, int)+0x400 in blur_naive.cu:23
+=========     by thread (1,4,0) in block (0,0,0)
+=========     Access to 0x80adff7f9 is out of bounds
+=========     and is 4294440954 bytes after the nearest allocation at 0x70ae40000 of size 262144 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x92b7] in blur_naive
+========= 
+========= Invalid __global__ read of size 1 bytes
+=========     at blur_kernel(unsigned char *, unsigned char *, unsigned int, unsigned int, int)+0x400 in blur_naive.cu:23
+=========     by thread (2,4,0) in block (0,0,0)
+=========     Access to 0x80adff7fa is out of bounds
+=========     and is 4294440955 bytes after the nearest allocation at 0x70ae40000 of size 262144 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x92b7] in blur_naive
+========= 
+입력: 합성 사선 무늬 (512 x 512)
+BLUR_SIZE = 8
+
+입력 (좌상단 8x8):
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0 255
+   0   0   0   0   0   0 255 255
+   0   0   0   0   0 255 255 255
+   0   0   0   0 255 255 255 255
+   0   0   0 255 255 255 255 255
+
+GPU 출력: 없음 — 커널이 끝까지 실행되지 못했다
+  unknown error
+
+CPU 참조 (좌상단 8x8):
+  88 102 115 127 137 145 153 159
+ 102 114 127 138 147 154 161 167
+ 115 127 139 148 156 163 170 175
+ 127 138 148 157 165 171 177 180
+ 137 147 156 165 172 177 181 183
+ 145 154 163 171 177 182 184 185
+ 153 161 170 177 181 184 185 185
+ 159 167 175 180 183 185 185 185
+
+검증: FAIL
+========= ERROR SUMMARY: 1669 errors
+========= ERROR SUMMARY: 1666 errors were not printed. Use --print-limit option to adjust the number of printed errors
+
+=================== lab04-occupancy ===================
+[정답본 없음: lab04 — TODO 상태로 실행됨]
+
+$ ./divergence
+N = 4194304, iters = 2000, blockDim = 256
+커널마다 예열 1회 뒤 5회 측정, 그중 가장 빠른 값을 쓴다.
+
+분기 있음 (i % 2)      :     2.72 ms
+분기 없음 ((i/32) % 2) :     1.37 ms
+비율                   :     1.98 배
+
+결과 합 (분기 있음 / 분기 없음) : 4.224429e+09 / 4.224429e+09
+
+$ ./divergence 4194304 4000 256
+N = 4194304, iters = 4000, blockDim = 256
+커널마다 예열 1회 뒤 5회 측정, 그중 가장 빠른 값을 쓴다.
+
+분기 있음 (i % 2)      :     5.41 ms
+분기 없음 ((i/32) % 2) :     2.71 ms
+비율                   :     2.00 배
+
+결과 합 (분기 있음 / 분기 없음) : 8.616272e+09 / 8.616272e+09
+
+=================== lab05-matmul ===================
+[정답본 적용: solutions/lab05]
+
+$ ./matmul 4096 16
+N = 4096, blockDim = 16 x 16, 행렬 하나당 64.0 MB
+검증: CPU 참조 표본 대조 (무작위 4096개 원소)
+naive :  118.224 ms  ( 1162.5 GFLOP/s)
+정확성: PASS
+
+=================== lab06-tiled-matmul ===================
+[정답본 적용: solutions/lab06]
+
+$ ./matmul 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+naive:  118.405 ms  ( 1160.8 GFLOP/s)
+tiled:  137.248 ms  ( 1001.4 GFLOP/s)
+정확성: PASS
+배속: 0.86x
+
+$ ./matmul 4096 16
+N = 4096, TILE_DIM = 16, 행렬 하나당 64.0 MB
+naive:  118.576 ms  ( 1159.1 GFLOP/s)
+tiled:   79.163 ms  ( 1736.1 GFLOP/s)
+정확성: PASS
+배속: 1.50x
+
+$ ./matmul 4096 32
+N = 4096, TILE_DIM = 32, 행렬 하나당 64.0 MB
+naive:  118.665 ms  ( 1158.2 GFLOP/s)
+tiled:   92.145 ms  ( 1491.5 GFLOP/s)
+정확성: PASS
+배속: 1.29x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 1.413306  (오차/기준크기 2.184e-01)
+naive:  117.899 ms  ( 1165.7 GFLOP/s)
+tiled:  126.998 ms  ( 1082.2 GFLOP/s)
+정확성: FAIL
+배속: 0.93x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 1.104996  (오차/기준크기 2.762e-01)
+naive:  118.189 ms  ( 1162.9 GFLOP/s)
+tiled:  127.903 ms  ( 1074.6 GFLOP/s)
+정확성: FAIL
+배속: 0.92x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 3.338712  (오차/기준크기 1.427e-01)
+naive:  118.499 ms  ( 1159.8 GFLOP/s)
+tiled:  132.027 ms  ( 1041.0 GFLOP/s)
+정확성: FAIL
+배속: 0.90x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 1.601493  (오차/기준크기 1.831e-01)
+naive:  118.279 ms  ( 1162.0 GFLOP/s)
+tiled:  131.745 ms  ( 1043.2 GFLOP/s)
+정확성: FAIL
+배속: 0.90x
+
+$ ./broken_syncthreads 4096 8
+N = 4096, TILE_DIM = 8, 행렬 하나당 64.0 MB
+  첫 불일치: [0]  기대 2.577856  실제 0.869609  (오차/기준크기 3.204e-01)
+naive:  118.540 ms  ( 1159.4 GFLOP/s)
+tiled:  127.216 ms  ( 1080.4 GFLOP/s)
+정확성: FAIL
+배속: 0.93x
+
+=================== lab07-coarsening ===================
+[정답본 적용: solutions/lab07]
+
+$ ./matmul 4096 16 4
+N=4096, TILE_DIM=16, COARSE_FACTOR=4   행렬 하나당 64.0 MB
+naive        :    118.5 ms    1159.8 GFLOP/s   1.00x  (기준선, 16x16 고정)
+tiled        :     79.3 ms    1732.6 GFLOP/s   1.49x
+tiled+coarse :     75.8 ms    1813.2 GFLOP/s   1.56x
+정확성: tiled=PASS  coarse=PASS
+
+$ ./transpose 4096 32
+N = 4096  (입력 64.0 MB + 출력 64.0 MB = 128.0 MB, L2 24MB 초과)
+TILE_DIM = 32,  반복 20회 평균
+
+naive 32x32      :   0.97 ms   138.5 GB/s   (이론 대비 30.9%)
+naive 16x16      :   0.38 ms   357.7 GB/s   (이론 대비 79.8%)
+tiled 32x32      :   0.67 ms   200.0 GB/s   (이론 대비 44.6%)
+배속  :   1.44 x   (기준선 naive 32x32 대비)
+정확성: PASS
+
+$ bash sweep.sh transpose
+전치 스윕 — N=4096, 기준선 naive 32x32 고정
+
+TILE_DIM   tiled ms   tiled GB/s 이론대비   배속
+       8       0.37        360.0      80.3%    2.62x
+      16       0.37        361.2      80.6%    2.62x
+      32       0.67        200.2      44.7%    1.45x
+
+기준선과 비교선 (TILE_DIM 과 무관하게 같다)
+naive 32x32      :   0.97 ms   138.6 GB/s   (이론 대비 30.9%)
+naive 16x16      :   0.37 ms   362.4 GB/s   (이론 대비 80.9%)
+
+$ bash sweep.sh coarse
+coarsening 스윕 — N=4096, TILE_DIM=16 고정
+
+COARSE      naive      tiled   배속     coarse   배속
+     1     1155.4     1732.8    1.50x     1732.9    1.50x
+     2     1157.3     1733.0    1.50x     1785.3    1.54x
+     4     1157.3     1733.1    1.50x     1808.4    1.56x
+     8     1158.7     1733.2    1.50x     1816.0    1.57x
+
+=================== lab08-nsight ===================
+[lab08 — lab06 정답본을 matmul.cu 로 사용. 채울 TODO 가 없는 랩이다]
+
+$ ncu --version
+NVIDIA (R) Nsight Compute Command Line Profiler
+Copyright (c) 2018-2026 NVIDIA Corporation
+Version 2026.2.1.0 (build 38283040) (public-release)
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_kernel --launch-count 1 ./matmul 1024 16
+==PROF== Connected to process 3773 (/tmp/chk/matmul)
+
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-111d-311e.log
+==ERROR== Profiling failed because a driver resource was unavailable or the user does not have permission to access NVIDIA GPU Performance Counters. Ensure that no other tool (like DCGM) is concurrently collecting profiling data. For instructions on enabling permissions, see https://developer.nvidia.com/ERR_NVGPUCTRPERM. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#faq for more details.
+==ERROR== For more information, see /tmp/nsight-compute-111d-311e.log
+==ERROR== Failed to profile "mm_kernel" in process 3773
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_tiled_kernel --launch-count 1 ./matmul 1024 16
+==PROF== Connected to process 3807 (/tmp/chk/matmul)
+
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-8e9d-d180.log
+==ERROR== Profiling failed because a driver resource was unavailable or the user does not have permission to access NVIDIA GPU Performance Counters. Ensure that no other tool (like DCGM) is concurrently collecting profiling data. For instructions on enabling permissions, see https://developer.nvidia.com/ERR_NVGPUCTRPERM. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#faq for more details.
+==ERROR== For more information, see /tmp/nsight-compute-8e9d-d180.log
+==ERROR== Failed to profile "mm_tiled_kernel" in process 3807
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_kernel --launch-count 1 ./matmul 4096 16
+==PROF== Connected to process 3841 (/tmp/chk/matmul)
+
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-7515-4791.log
+==ERROR== Profiling failed because a driver resource was unavailable or the user does not have permission to access NVIDIA GPU Performance Counters. Ensure that no other tool (like DCGM) is concurrently collecting profiling data. For instructions on enabling permissions, see https://developer.nvidia.com/ERR_NVGPUCTRPERM. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#faq for more details.
+==ERROR== For more information, see /tmp/nsight-compute-7515-4791.log
+==ERROR== Failed to profile "mm_kernel" in process 3841
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).
+
+$ ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed,gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,sm__warps_active.avg.pct_of_peak_sustained_active --kernel-name mm_tiled_kernel --launch-count 1 ./matmul 4096 16
+==PROF== Connected to process 3875 (/tmp/chk/matmul)
+
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-74cd-e524.log
+==ERROR== Profiling failed because a driver resource was unavailable or the user does not have permission to access NVIDIA GPU Performance Counters. Ensure that no other tool (like DCGM) is concurrently collecting profiling data. For instructions on enabling permissions, see https://developer.nvidia.com/ERR_NVGPUCTRPERM. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#faq for more details.
+==ERROR== For more information, see /tmp/nsight-compute-74cd-e524.log
+==ERROR== Failed to profile "mm_tiled_kernel" in process 3875
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).
+
+$ ncu --set basic ./matmul 1024 16
+==PROF== Connected to process 3909 (/tmp/chk/matmul)
+
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-e560-e131.log
+==ERROR== Profiling failed because a driver resource was unavailable or the user does not have permission to access NVIDIA GPU Performance Counters. Ensure that no other tool (like DCGM) is concurrently collecting profiling data. For instructions on enabling permissions, see https://developer.nvidia.com/ERR_NVGPUCTRPERM. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#faq for more details.
+==ERROR== For more information, see /tmp/nsight-compute-e560-e131.log
+==ERROR== Failed to profile "mm_kernel" in process 3909
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).
+
+=================== lab09-convolution ===================
+[정답본 적용: solutions/lab09]
+
+$ ./conv_const
+입력: 합성 사선 무늬 (4096 x 4096)
+FILTER_RADIUS = 2  (FILTER_DIM = 5)
+커널        :     0.79 ms
+유효 대역폭 :    170.4 GB/s
+연산 처리율 :   1065.0 GFLOP/s
+연산/바이트 :      6.2 FLOP/B  (최소 트래픽 기준)
+슬라이드 20 :     0.48 FLOP/B  (커널이 요청하는 전역 접근 기준)
+정확성: PASS
+
+$ ./conv_global
+입력: 합성 사선 무늬 (4096 x 4096)
+FILTER_RADIUS = 2  (FILTER_DIM = 5)
+커널        :     0.79 ms
+유효 대역폭 :    171.0 GB/s
+연산 처리율 :   1068.4 GFLOP/s
+연산/바이트 :      6.2 FLOP/B  (최소 트래픽 기준)
+슬라이드 20 :     0.25 FLOP/B  (필터도 전역에서 읽는다)
+정확성: PASS
+
+$ bash sweep.sh
+이미지 4096x4096, FILTER_RADIUS = 1 2 4 8
+
+ RADIUS     DIM   const ms       GB/s    GFLOP/s     FLOP/B  global ms   비율
+      1       3       0.43      313.8      706.1        2.2       0.43     1.00
+      2       5       0.77      175.1     1094.3        6.2       0.79     1.03
+      4       9       2.13       63.0     1276.5       20.2       2.22     1.04
+      8      17       7.33       18.3     1323.7       72.2       7.71     1.05
+
+=================== lab10-histogram ===================
+[정답본 적용: solutions/lab10]
+
+$ ./histogram
+N = 67108864, 분포 = 균등
+  bin 0: 기대 261949 실제 5441
+race    :    2.04 ms   합계 1374988   (기대 67108864)   FAIL
+atomic  :    9.80 ms   합계 67108864                     PASS
+private :    1.72 ms   합계 67108864                     PASS
+
+$ ./histogram
+N = 67108864, 분포 = 균등
+  bin 0: 기대 261949 실제 5329
+race    :    2.04 ms   합계 1366128   (기대 67108864)   FAIL
+atomic  :    9.80 ms   합계 67108864                     PASS
+private :    1.72 ms   합계 67108864                     PASS
+
+$ ./histogram
+N = 67108864, 분포 = 균등
+  bin 0: 기대 261949 실제 5314
+race    :    2.04 ms   합계 1371648   (기대 67108864)   FAIL
+atomic  :    9.80 ms   합계 67108864                     PASS
+private :    1.72 ms   합계 67108864                     PASS
+
+$ ./histogram --skewed
+N = 67108864, 분포 = 치우침
+  bin 0: 기대 13474336 실제 2302
+race    :    9.63 ms   합계 439659   (기대 67108864)   FAIL
+atomic  :    9.99 ms   합계 67108864                     PASS
+private :    1.44 ms   합계 67108864                     PASS
+
+=================== lab11-reduction ===================
+[정답본 적용: solutions/lab11]
+
+$ ./assoc
+big                 = 16777216.0
+(big + 1.0f) + 1.0f = 16777216.0
+big + (1.0f + 1.0f) = 16777218.0
+
+$ ./reduce
+N = 67108864 (256.0 MB), BLOCK_DIM = 256, COARSE_FACTOR = 4
+이론 대역폭 = 448.0 GB/s
+
+CPU (float,  순차): 16777216.000000
+CPU (double, 순차): 33557630.328125
+
+=== 합계 ===
+  불일치: 기대 33557630.328125  실제 16777216.000000  (상대오차 5.000e-01)
+atomic     : 16777216.000000   검증 FAIL
+naive      : 33557588.000000   검증 PASS
+coalesced  : 33557576.000000   검증 PASS
+shared     : 33557572.000000   검증 PASS
+coarsened  : 33557644.000000   검증 PASS
+
+=== 성능 ===
+atomic     :   79.930 ms      3.4 GB/s  (이론 대비   0.7%)
+naive      :    1.473 ms    182.2 GB/s  (이론 대비  40.7%)
+coalesced  :    1.059 ms    253.5 GB/s  (이론 대비  56.6%)
+shared     :    0.857 ms    313.1 GB/s  (이론 대비  69.9%)
+coarsened  :    0.700 ms    383.4 GB/s  (이론 대비  85.6%)
+
+=================== lab12-scan ===================
+[정답본 적용: solutions/lab12]
+
+$ ./scan
+N = 1048576, BLOCK_DIM = 1024,  반복 1000회 평균
+왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.
+race      :  0.049 ms   (전체  0.068 ms)   FAIL   첫 불일치 idx=83136  기대 41516.968750  실제 41825.015625
+global    :  0.048 ms   (전체  0.067 ms)   PASS
+shared    :  0.041 ms   (전체  0.060 ms)   PASS
+double    :  0.051 ms   (전체  0.070 ms)   PASS
+exclusive :  0.051 ms   (전체  0.070 ms)   PASS
+
+$ ./scan
+N = 1048576, BLOCK_DIM = 1024,  반복 1000회 평균
+왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.
+race      :  0.049 ms   (전체  0.068 ms)   FAIL   첫 불일치 idx=84320  기대 42084.957031  실제 42394.835938
+global    :  0.048 ms   (전체  0.067 ms)   PASS
+shared    :  0.041 ms   (전체  0.060 ms)   PASS
+double    :  0.051 ms   (전체  0.070 ms)   PASS
+exclusive :  0.051 ms   (전체  0.070 ms)   PASS
+
+$ ./scan
+N = 1048576, BLOCK_DIM = 1024,  반복 1000회 평균
+왼쪽 시간은 1단계 커널만 잰 것이다. 괄호 안이 3단계 전체다.
+race      :  0.049 ms   (전체  0.068 ms)   FAIL   첫 불일치 idx=72416  기대 36169.144531  실제 36482.824219
+global    :  0.048 ms   (전체  0.067 ms)   PASS
+shared    :  0.041 ms   (전체  0.060 ms)   PASS
+double    :  0.051 ms   (전체  0.070 ms)   PASS
+exclusive :  0.051 ms   (전체  0.070 ms)   PASS
+
+=================== lab13-stencil ===================
+[정답본 적용: solutions/lab13]
+
+$ ./stencil 256
+N = 256  (입력 64.0 MB + 출력 64.0 MB, L2 24MB 초과)
+IN_TILE_DIM = 8 (3D 타일링, OUT_TILE_DIM = 6),  32 (2D 슬라이스, OUT_TILE_DIM = 30)
+이론 대역폭 = 448.0 GB/s
+
+커널        시간      GB/s 이론대비 공유메모리/블록 SM당 블록 공유MEM 한계 검증
+basic        0.45 ms     298.6     66.7%            0 B           3  제한없음   PASS
+tiled        0.77 ms     173.8     38.8%         2048 B           3            50   PASS
+coarse       0.57 ms     234.5     52.3%        12288 B           1             8   PASS
+register     0.50 ms     267.9     59.8%         4096 B           1            25   PASS
+
+블록당 스레드: basic 512, tiled 512, coarse/register 1024   (SM당 최대 1536 스레드)
+"SM당 블록" 은 실제 값이고, "공유MEM 한계" 는 공유 메모리만 따졌을 때
+들어갈 수 있는 블록 수다. 둘이 다르면 공유 메모리가 아닌 다른 것이 막고 있다.
+
+$ bash sweep.sh all
+N = 256  (입력 64.0 MB + 출력 64.0 MB, L2 24MB 초과)
+IN_TILE_DIM = 8 (3D 타일링, OUT_TILE_DIM = 6),  32 (2D 슬라이스, OUT_TILE_DIM = 30)
+이론 대역폭 = 448.0 GB/s
+
+커널        시간      GB/s 이론대비 공유메모리/블록 SM당 블록 공유MEM 한계 검증
+basic        0.45 ms     297.5     66.4%            0 B           3  제한없음   PASS
+tiled        0.77 ms     173.9     38.8%         2048 B           3            50   PASS
+coarse       0.57 ms     234.6     52.4%        12288 B           1             8   PASS
+register     0.50 ms     268.9     60.0%         4096 B           1            25   PASS
+
+블록당 스레드: basic 512, tiled 512, coarse/register 1024   (SM당 최대 1536 스레드)
+"SM당 블록" 은 실제 값이고, "공유MEM 한계" 는 공유 메모리만 따졌을 때
+들어갈 수 있는 블록 수다. 둘이 다르면 공유 메모리가 아닌 다른 것이 막고 있다.
+
+$ bash sweep.sh tile
+3D 타일링 스윕 — N=256, IN_TILE_DIM = 6 8 10 12
+
+  IN_TILE    OUT_TILE 스레드/블록     시간      GB/s 공유메모리
+        6           4       216    1.08 ms     124.1      27.7% B
+        8           6       512    0.77 ms     173.5      38.7% B
+       10           8      1000    1.03 ms     130.3      29.1% B
+       12          10      1728   실행 불가
+           | IN_TILE_DIM=12 는 3D 블록에서 1728 스레드가 되어 블록당 최대 1024 를 넘는다.
+           | 슬라이드 19~22 가 말하는 한계가 이것이다.
+
+빌드를 기본값으로 되돌린다.
+
+=================== 요약 ===================
+아래 항목이 비어 있어야 정상이다.
+
+--- TODO 미완성 (정답본 누락)
+
+--- 빌드 오류
+
+확인은 4060-검증-체크리스트.md 의 항목별 기준을 따른다.
