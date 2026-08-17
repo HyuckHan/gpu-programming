@@ -23,7 +23,7 @@ Makefile이 `-lineinfo`로 빌드한다. 이 플래그가 없으면 `ncu`가 측
 소스 줄과 연결하지 못한다. lab03에서 `compute-sanitizer`에 줄 번호를
 얻으려고 붙였던 것과 같은 플래그다.
 
-### 문제 크기를 두 가지로 잰다
+## 문제 크기를 두 가지로 잰다
 
 `ncu`는 카운터를 모으려고 **커널을 여러 번 다시 실행한다(replay).**
 출력에 `7 passes`라고 나오는 것이 그것이다. 그래서 프로파일링은 그냥
@@ -129,7 +129,7 @@ sm__warps_active.avg.pct_of_peak_sustained_active \
 | naive | 4096 | | | |
 | tiled | 4096 | | | |
 
-### 무엇이 사용률을 밀어 올렸는지 쪼개 본다
+## 무엇이 사용률을 밀어 올렸는지 쪼개 본다
 
 세 지표만으로는 `sm__throughput`이 왜 높은지 알 수 없다. 요약 화면을 한 번 본다.
 
@@ -182,7 +182,7 @@ occupancy가 성능에 대해 무엇을 말해 주고 무엇을 말해 주지 �
 
 ## 7. 문제 해결
 
-### `ERR_NVGPUCTRPERM`
+## `ERR_NVGPUCTRPERM`
 
 ```
 ==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access
@@ -203,14 +203,14 @@ NVIDIA GPU Performance Counters on the target device.
 
 자세한 것은 오류 메시지에 함께 나오는 NVIDIA 문서 링크를 따라가면 된다.
 
-### 커널 이름이 안 잡힌다
+## 커널 이름이 안 잡힌다
 
 `--kernel-name mm_tiled_kernel`을 줬는데 아무것도 안 나온다면,
 tiled 커널이 template이라 실제 이름이 길어서 그렇다. 부분 문자열로 찾으므로
 `mm_tiled_kernel`만으로 잡히는 것이 정상이지만, 안 되면 `--kernel-name-base demangled`
 를 붙이거나 `--kernel-name regex:mm_tiled`로 바꾼다.
 
-### 너무 오래 걸린다
+## 너무 오래 걸린다
 
 `--launch-count 1`을 빠뜨리지 않았는지 본다. 이것이 없으면 프로그램이 부르는
 모든 실행을 다 프로파일링한다. `--set full`은 metric을 전부 모으므로
