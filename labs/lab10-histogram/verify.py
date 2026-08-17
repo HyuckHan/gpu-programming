@@ -4,9 +4,10 @@
 
     python3 verify.py        (또는  make test)
 
-histogram 을 빌드하고 돌려서 private 커널의 검증 통과 여부를 판정한다.
-race 는 틀리는 것이 정상이므로 판정 대상이 아니고,
-atomic 은 private 로 가는 중간 단계라 함께 확인만 한다.
+histogram 을 빌드하고 돌려서 atomic 커널의 검증 통과 여부를 판정한다.
+race 는 틀리는 것이 정상이므로 판정 대상이 아니다.
+private 는 선택 과제라 판정하지 않는다. 채웠으면 결과만 함께 찍어 준다.
+슬라이드에 코드가 없는 과제를 통과 조건으로 걸지 않기 위한 것이다.
 표준 라이브러리만 쓴다.
 """
 import re
@@ -36,7 +37,7 @@ def kernel_line(out, name):
 
 def main():
     print("=" * 62)
-    print("lab10 히스토그램 — 자체 점검 (판정 대상: private 커널)")
+    print("lab10 히스토그램 — 자체 점검 (판정 대상: atomic 커널)")
     print("=" * 62)
 
     print("\n[1/2] 빌드")
@@ -59,36 +60,37 @@ def main():
             failed.append((N, skewed))
             continue
 
-        line = kernel_line(r.stdout, "private")
+        line = kernel_line(r.stdout, "atomic")
         if line is None:
             print(f"{label} 실행 실패 (rc={r.returncode})")
             print("   ", (r.stderr.strip() or r.stdout.strip())[:300])
             failed.append((N, skewed))
             continue
 
-        print(f"{label} private : {line}")
+        print(f"{label} atomic  : {line}")
         if "PASS" not in line:
             failed.append((N, skewed))
+
+        # private 는 선택 과제다. 판정하지 않고 상태만 알려 준다.
+        priv = kernel_line(r.stdout, "private")
+        if priv is not None:
+            print(f"  {'':<17} private : {priv}   (선택 과제 — 판정하지 않는다)")
 
     print("\n" + "=" * 62)
     if failed:
         print(f"결과: 실패 {len(failed)}건")
         src = (HERE / "histogram.cu").read_text(encoding="utf-8")
-        if "TODO 1:" in src:
-            print("histogram.cu 의 histogram_private_kernel 에 아직 TODO 가 남아 있다.")
-            print("다섯 단계를 모두 채워야 한다.")
+        if "TODO: bins[b]" in src:
+            print("histogram.cu 의 histogram_atomic_kernel 에 아직 TODO 가 남아 있다.")
+            print("race 커널과 다른 곳은 한 줄뿐이다 (슬라이드 12).")
         else:
             print("점검할 것:")
-            print("  • bins_s 초기화와 전역 반영을 블록의 스레드로 나눴는가")
-            print("    (threadIdx.x 부터 blockDim.x 씩 건너뛰며 도는 형태)")
-            print("  • __syncthreads() 를 두 곳 모두 넣었는가")
-            print("    (초기화 뒤 한 번, 세기 뒤 한 번)")
-            print("  • bins_s 에 더할 때도 atomicAdd 를 썼는가")
-            print("    같은 블록 안에서도 스레드끼리 같은 칸을 노린다")
+            print("  • bins[b] 를 늘릴 때 atomicAdd 를 썼는가")
+            print("  • 경계 검사(i < N)를 그대로 두었는가")
         return 1
 
     print(f"결과: 전부 통과 ({len(CONFIGS)}/{len(CONFIGS)})")
-    print("제출해도 된다.")
+    print("제출해도 된다. private 커널은 선택 과제이므로 못 채웠어도 통과다.")
     return 0
 
 

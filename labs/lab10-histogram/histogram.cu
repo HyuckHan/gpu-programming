@@ -58,6 +58,12 @@ __global__ void histogram_atomic_kernel(unsigned char* image, unsigned int* bins
 //
 // NUM_BINS 는 256이라 공유 메모리로 1KB뿐이다. 여유가 충분하다.
 // ---------------------------------------------------------------------------
+// privatization — 도전 과제, 선택
+//
+// 이 커널은 슬라이드에 코드가 없다. 개념 설명(슬라이드 14·15·17)을 보고
+// 직접 구현하는 것이다. 못 채워도 이 랩은 통과한다. verify.py 는 위의
+// atomic 커널만 판정한다.
+// ---------------------------------------------------------------------------
 __global__ void histogram_private_kernel(unsigned char* image, unsigned int* bins,
                                          unsigned int width, unsigned int height) {
 
