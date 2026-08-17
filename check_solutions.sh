@@ -18,6 +18,9 @@ WORK="${TMPDIR:-/tmp}/check_solutions.$$"
 ONLY="${1:-}"
 rc=0
 
+# 랩 간 의존 파일 규칙은 deps.sh 에만 있다. 여기서 다시 적지 않는다.
+. "$ROOT/deps.sh"
+
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
 
@@ -73,12 +76,14 @@ for d in "$ROOT"/labs/*/; do
     for f in "$d"*.cu "$d"*.c "$d"*.h "$d"*.py "$d"*.sh; do
         [ -f "$f" ] && cp "$f" "$dir/"
     done
-    [ "$key" = "lab01" ] || cp "$ROOT/common/common.cuh" "$dir/"
-    [ "$key" = "lab04" ] && cp "$ROOT/labs/lab02-vecadd/vecadd.cu" "$dir/"
-    [ "$key" = "lab09" ] && cp "$ROOT/labs/lab03-blur/pgm.h" "$dir/"
-    # lab08 은 프로파일링만 하는 랩이라 완성된 커널이 필요하다.
-    # 배포 zip 과 같이 lab06 정답본을 matmul.cu 로 넣는다.
-    [ "$key" = "lab08" ] && cp "$ROOT/solutions/lab06/skeleton.cu" "$dir/matmul.cu"
+    # 딸린 파일(common.cuh, lab04 의 vecadd.cu, lab08 의 matmul.cu, lab09 의 pgm.h)은
+    # deps.sh 가 넣는다. --solutions 이므로 labs/ 대신 solutions/ 의 같은 이름
+    # 파일을 쓴다. lab08 의 matmul.cu 는 원래부터 lab06 정답본이다.
+    if ! copy_lab_deps "$ROOT" "$name" "$dir" --solutions; then
+        echo "!! $name — 의존 파일을 넣지 못했다"
+        rc=1
+        continue
+    fi
 
     # 정답본으로 덮어쓴다. 파일명이 원본과 같아야 한다.
     if [ -d "$sol" ]; then

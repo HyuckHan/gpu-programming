@@ -11,6 +11,12 @@
 # lab06 의 TODO 를 못 채운 학생도 실습을 할 수 있어야 하므로 lab06 정답본을
 # matmul.cu 라는 이름으로 넣는다. lab08 은 10주차라 lab06 제출이 이미 끝난
 # 뒤이고, 타일드 커널 완성본은 강의 슬라이드에도 있다.
+#
+# 랩 간 의존 파일(위 lab08 의 matmul.cu, lab04 의 vecadd.cu, lab09 의 pgm.h)은
+# deps.sh 에만 적는다. 이 Makefile 은 거기 있는 copy_lab_deps 를 부른다.
+
+# deps.sh 의 copy_lab_deps 가 bash 문법을 쓴다
+SHELL := /bin/bash
 
 LABS  := $(notdir $(wildcard labs/lab*))
 DIST  := dist
@@ -38,24 +44,19 @@ help:
 dist:
 	@rm -rf $(STAGE)
 	@mkdir -p $(DIST)
-	@for lab in $(if $(LAB),$(LAB),$(LABS)); do \
+	@set -e; . ./deps.sh; \
+	for lab in $(if $(LAB),$(LAB),$(LABS)); do \
 	  if [ ! -d "labs/$$lab" ]; then echo "labs/$$lab 이 없다" >&2; exit 1; fi; \
 	  stage="$(STAGE)/$$lab"; \
 	  mkdir -p "$$stage"; \
 	  cp "labs/$$lab/Makefile" "$$stage/"; \
-	  [ -f "labs/$$lab/README.md" ] && cp "labs/$$lab/README.md" "$$stage/"; \
+	  if [ -f "labs/$$lab/README.md" ]; then cp "labs/$$lab/README.md" "$$stage/"; fi; \
 	  for pat in $(SRC_EXT); do \
-	    for f in labs/$$lab/$$pat; do [ -f "$$f" ] && cp "$$f" "$$stage/"; done; \
+	    for f in labs/$$lab/$$pat; do \
+	      if [ -f "$$f" ]; then cp "$$f" "$$stage/"; fi; \
+	    done; \
 	  done; \
-	  case "$$lab" in \
-	    lab01-*) ;; \
-	    *) cp common/common.cuh "$$stage/" ;; \
-	  esac; \
-	  case "$$lab" in \
-	    lab04-*) cp labs/lab02-vecadd/vecadd.cu "$$stage/" ;; \
-	    lab09-*) cp labs/lab03-blur/pgm.h       "$$stage/" ;; \
-	    lab08-*) cp solutions/lab06/skeleton.cu "$$stage/matmul.cu" ;; \
-	  esac; \
+	  copy_lab_deps "$(CURDIR)" "$$lab" "$$stage"; \
 	  rm -f "$(DIST)/$$lab.zip"; \
 	  (cd "$(STAGE)" && zip -qr "../$$lab.zip" "$$lab"); \
 	  if unzip -l "$(DIST)/$$lab.zip" | grep -qi "solution"; then \

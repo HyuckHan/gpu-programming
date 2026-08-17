@@ -10,6 +10,9 @@ set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 WORK=/tmp/chk
 
+# 랩 간 의존 파일 규칙은 deps.sh 에만 있다. 여기서 case 문으로 다시 적지 않는다.
+. "$ROOT/deps.sh"
+
 hr()  { echo; echo "=================== $* ==================="; }
 run() { echo; echo "\$ $*"; eval "$@"; }
 
@@ -20,14 +23,13 @@ prepare() {
   key="${name%%-*}"                      # lab06-tiled-matmul → lab06
 
   rm -rf "$WORK"; cp -r "$dir" "$WORK"
-  cp "$ROOT/common/common.cuh" "$WORK/" 2>/dev/null
 
-  # 랩 간 의존 파일
-  case "$name" in
-    lab04-*) cp "$ROOT"/labs/lab02-*/vecadd.cu  "$WORK/" 2>/dev/null ;;
-    lab08-*) cp "$ROOT"/solutions/lab06/skeleton.cu "$WORK/matmul.cu" 2>/dev/null ;;
-    lab09-*) cp "$ROOT"/labs/lab03-*/pgm.h      "$WORK/" 2>/dev/null ;;
-  esac
+  # 랩 간 의존 파일 + common.cuh. --solutions 이므로 labs/ 대신 solutions/ 의
+  # 같은 이름 파일을 쓴다. lab04 가 받는 vecadd.cu 도 정답본이 된다.
+  if ! copy_lab_deps "$ROOT" "$name" "$WORK" --solutions; then
+    echo "!! $name — 의존 파일을 넣지 못했다. 실행을 건너뛴다" >&2
+    return 1
+  fi
 
   # 정답본 덮어쓰기
   if [ -d "$ROOT/solutions/$key" ]; then
@@ -62,6 +64,16 @@ run_lab() {
       run "./vecadd --info"
       run "./vecadd"
       run "./vecadd_naive"
+      # 랩의 2·3단계. 같은 도구가 한쪽은 0건, 다른 쪽은 오류를 낸다.
+      # 이것이 어긋나면 실습 순서가 성립하지 않으므로 매번 확인한다.
+      #   naive (내림, 검사 없음)      → 검증 FAIL, 도구 0건
+      #   스켈레톤 (올림, 검사 없음)   → 검증 PASS, 도구 오류 있음
+      #   정답본                       → 검증 PASS, 도구 0건
+      run "compute-sanitizer ./vecadd_naive 2>&1 | grep 'ERROR SUMMARY'"
+      cp "$ROOT/labs/lab02-vecadd/vecadd.cu" "$WORK/vecadd_todo.cu"
+      run "make vecadd_todo >/dev/null 2>&1 && ./vecadd_todo | grep '검증'"
+      run "compute-sanitizer ./vecadd_todo 2>&1 | grep 'ERROR SUMMARY'"
+      run "compute-sanitizer ./vecadd 2>&1 | grep 'ERROR SUMMARY'"
       for b in 32 64 128 256 512 1024; do run "./vecadd 9999999 $b"; done
       ;;
     lab03-*)

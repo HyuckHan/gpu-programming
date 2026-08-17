@@ -22,6 +22,13 @@
 - `common.cuh`/`pgm.h` 는 저장소 경로와 배포 zip 경로가 다르다. Makefile 에서
   `COMMON_DIR ?= $(if $(wildcard common.cuh),.,../../common)` 으로 이중화하고
   `-I` 로 넘긴다. 소스의 include 는 항상 `#include "common.cuh"` 형태다.
+- **랩 간 의존 파일은 `deps.sh` 에만 적는다.** 랩 디렉터리에는 없지만 배포 zip 이나
+  검증에서 함께 있어야 하는 파일(lab04 의 `vecadd.cu`, lab08 의 `matmul.cu`,
+  lab09 의 `pgm.h`)이다. 이름이 바뀌는 것까지 `원본경로:대상이름` 으로 한 곳에서
+  관리한다. `make dist`, `check.sh`, `check_solutions.sh` 는 `deps.sh` 의
+  `copy_lab_deps` 만 부른다. 세 곳에 각자 적어 두었더니 서로 어긋났다.
+  검증 스크립트는 `--solutions` 를 붙여 `labs/` 대신 `solutions/` 의 같은 이름
+  파일을 쓴다. 원본이 없으면 조용히 넘어가지 않고 경고를 찍고 실패한다.
 
 ## 코딩 규약
 - 자료형 float 고정. double 금지 (FP32의 1/64 속도)
