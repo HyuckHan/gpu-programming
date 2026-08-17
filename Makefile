@@ -21,7 +21,10 @@ STAGE := $(DIST)/.stage
 # 따옴표가 필요하다. 없으면 셸이 저장소 루트에서 먼저 글롭을 펼쳐 버린다.
 SRC_EXT := "*.cu" "*.c" "*.h" "*.cuh" "*.py" "*.sh" "*.txt"
 
-.PHONY: help dist clean
+MAINFONT ?= Noto Sans CJK KR 
+MONOFONT ?= D2Coding
+
+.PHONY: help dist clean notes
 
 help:
 	@echo "저장소 루트"
@@ -61,6 +64,20 @@ dist:
 	  echo "  $(DIST)/$$lab.zip"; \
 	done
 	@rm -rf $(STAGE)
+
+notes:
+	@mkdir -p dist
+	@for d in labs/*/; do \
+	  n=$$(basename $$d); \
+	  [ -f $$d/README.md ] || continue; \
+	  pandoc $$d/README.md -o dist/$$n.pdf \
+	    --pdf-engine=xelatex \
+	    --highlight-style=monochrome \
+	    -V mainfont="$(MAINFONT)" -V monofont="$(MONOFONT)" \
+	    -V geometry:margin=25mm -V fontsize=11pt \
+	    -V header-includes='\renewcommand{\arraystretch}{2}' \
+	  && echo "  $$n.pdf" || echo "  !! $$n 실패"; \
+	done
 
 clean:
 	rm -rf $(DIST)
