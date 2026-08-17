@@ -97,6 +97,19 @@ static void launch_tiled(unsigned int tile_dim, dim3 grid, dim3 block,
     CUDA_CHECK(cudaGetLastError());
 }
 
+// L2 크기는 GPU마다 다르다. 하드코딩하지 않고 실행 중인 디바이스에 조회한다.
+// 얻지 못하면 0을 돌려주므로 호출부에서 그 줄을 건너뛴다.
+static float l2_cache_MB(void) {
+    int device = 0;
+    if (cudaGetDevice(&device) != cudaSuccess) { cudaGetLastError(); return 0.0f; }
+    int bytes = 0;
+    if (cudaDeviceGetAttribute(&bytes, cudaDevAttrL2CacheSize, device) != cudaSuccess) {
+        cudaGetLastError();
+        return 0.0f;
+    }
+    return bytes/(1024.0f*1024.0f);
+}
+
 int main(int argc, char** argv) {
 
     unsigned int N        = (argc > 1) ? (unsigned int)atoi(argv[1]) : 4096;
@@ -121,8 +134,16 @@ int main(int argc, char** argv) {
     }
 
     size_t bytes = (size_t)N*N*sizeof(float);
-    printf("N = %u, TILE_DIM = %u, 행렬 하나당 %.1f MB\n",
-           N, TILE_DIM, bytes/(1024.0*1024.0));
+    double totalMB = 3.0*bytes/(1024.0*1024.0);
+    printf("N = %u, TILE_DIM = %u, 행렬 하나당 %.1f MB (3개 합계 %.1f MB)\n",
+           N, TILE_DIM, bytes/(1024.0*1024.0), totalMB);
+
+    // 행렬 3개가 L2 에 들어가는지는 카드마다 다르다. 판정을 프로그램이 한다.
+    float l2 = l2_cache_MB();
+    if (l2 > 0.0f) {
+        printf("이 GPU 의 L2 = %.0f MB — 행렬 3개 합계가 L2 %s\n",
+               l2, (totalMB > l2) ? "초과" : "이내");
+    }
 
     // 호스트 메모리
     float* A       = (float*)malloc(bytes);
