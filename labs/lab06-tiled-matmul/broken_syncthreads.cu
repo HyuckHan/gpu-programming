@@ -3,6 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "common.cuh"
+// 커널마다 예열 한 번 뒤 MEASURE_RUNS 번 재고 그중 가장 빠른 값을 쓴다.
+//
+// N=4096 행렬곱을 연달아 돌리면 GPU 가 전력·온도 한계에 걸려 클럭이 내려간다.
+// 실제로 같은 정상 커널이 1160 GFLOP/s 에서 530 대로 절반 떨어졌다가 한참 뒤에
+// 회복하는 구간이 관찰됐다. 그 구간에서 잰 값은 커널의 성능이 아니라 그때의
+// 온도다. 방해는 시간을 늘리기만 하므로, 여러 번 재서 가장 빠른 값을 고르면
+// 방해받지 않은 실행을 고르는 셈이 된다. lab04 divergence.cu 와 같은 방식이다.
+//
+// 5회가 아니라 3회인 것은 4096 행렬곱 한 번이 100ms 를 넘기 때문이다.
+#define MEASURE_RUNS 3
+
 
 // ---------------------------------------------------------------------------
 // naive 행렬곱 — 3주차에서 다룬 커널
@@ -102,6 +113,7 @@ int main(int argc, char** argv) {
     size_t bytes = (size_t)N*N*sizeof(float);
     printf("N = %u, TILE_DIM = %u, 행렬 하나당 %.1f MB\n",
            N, TILE_DIM, bytes/(1024.0*1024.0));
+    printf("커널마다 예열 1회 뒤 %d회 측정, 그중 가장 빠른 값을 쓴다.\n", MEASURE_RUNS);
 
     float* A       = (float*)malloc(bytes);
     float* B       = (float*)malloc(bytes);
@@ -126,20 +138,29 @@ int main(int argc, char** argv) {
     dim3 block_naive(16, 16);
     dim3 grid_naive(N/16, N/16);
 
-    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
+    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);   // 예열
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
-    timer.start();
-    mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
-    float ms_naive = timer.stop();
+    float ms_naive = 0.0f;
+    for (int r_ = 0; r_ < MEASURE_RUNS; ++r_) {
+        timer.start();
+        mm_kernel<<<grid_naive, block_naive>>>(A_d, B_d, C_d, N);
+        float ms_ = timer.stop();
+        if (r_ == 0 || ms_ < ms_naive) ms_naive = ms_;
+    }
     CUDA_CHECK(cudaMemcpy(C_naive, C_d, bytes, cudaMemcpyDeviceToHost));
 
     CUDA_CHECK(cudaMemset(C_d, 0, bytes));
-    launch_tiled(TILE_DIM, grid, block, A_d, B_d, C_d, N);
+    launch_tiled(TILE_DIM, grid, block, A_d, B_d, C_d, N);   // 예열
+    CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
-    timer.start();
-    launch_tiled(TILE_DIM, grid, block, A_d, B_d, C_d, N);
-    float ms_tiled = timer.stop();
+    float ms_tiled = 0.0f;
+    for (int r_ = 0; r_ < MEASURE_RUNS; ++r_) {
+        timer.start();
+        launch_tiled(TILE_DIM, grid, block, A_d, B_d, C_d, N);
+        float ms_ = timer.stop();
+        if (r_ == 0 || ms_ < ms_tiled) ms_tiled = ms_;
+    }
     CUDA_CHECK(cudaMemcpy(C_tiled, C_d, bytes, cudaMemcpyDeviceToHost));
 
     int ok = compare_float(C_naive, C_tiled, (size_t)N*N, 1e-3f);

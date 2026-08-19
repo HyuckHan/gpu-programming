@@ -16,6 +16,20 @@ WORK=/tmp/chk
 hr()  { echo; echo "=================== $* ==================="; }
 run() { echo; echo "\$ $*"; eval "$@"; }
 
+# 무거운 랩 앞에서 GPU 를 식힌다.
+#
+# 4096 행렬곱을 연달아 돌리면 전력·온도 한계에 걸려 클럭이 내려간다. 실제로
+# 같은 정상 커널이 1160 GFLOP/s 에서 530 대로 떨어졌다가 한참 뒤에 회복하는
+# 구간이 관찰됐다. 그 구간의 숫자는 커널 성능이 아니라 그때의 온도다.
+# 프로그램 쪽에서도 여러 번 재서 가장 빠른 값을 쓰지만, 랩 사이에도 쉬어 준다.
+COOLDOWN="${COOLDOWN:-15}"
+cooldown() {
+  [ "$COOLDOWN" -gt 0 ] || return 0
+  echo
+  echo "[쿨다운 ${COOLDOWN}초 — $1 는 무거운 랩이라 앞에서 GPU 를 식힌다]"
+  sleep "$COOLDOWN"
+}
+
 # 랩 디렉터리를 /tmp 에 펼치고 정답본을 덮어쓴 뒤 빌드한다.
 prepare() {
   local dir="$1" name key
@@ -144,8 +158,15 @@ run "nvidia-smi --query-gpu=name,compute_cap,memory.total --format=csv"
 run "nvcc --version | tail -2"
 run "ncu --version | tail -1"
 
+# 4096 행렬곱을 돌리는 랩들이다. 앞에서 쉬어 준다.
+HEAVY_LABS="lab05 lab06 lab07 lab13"
+
 for d in "$ROOT"/labs/*/; do
   [ -f "$d/Makefile" ] || [ -f "$d/README.md" ] || continue
+  name="$(basename "$d")"
+  case " $HEAVY_LABS " in
+    *" ${name%%-*} "*) cooldown "$name" ;;
+  esac
   run_lab "$d"
 done
 

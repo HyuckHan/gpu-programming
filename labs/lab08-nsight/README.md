@@ -16,6 +16,15 @@ make
 ncu --version
 ```
 
+> **프로파일링 중 프로그램이 출력하는 시간과 GFLOP/s 는 계측 오버헤드가
+> 포함된 값이다. 성능 수치는 프로파일러 없이 잰 것(lab06 결과)을 쓴다.
+> 여기서 볼 것은 metric 값이다.**
+>
+> `ncu` 는 카운터를 모으려고 커널을 여러 번 다시 실행한다. 그래서 프로그램이
+> 스스로 잰 시간이 30배까지 부풀어 찍힌다. 실제로 lab06 에서 118ms /
+> 1164 GFLOP/s 로 나오던 커널이 프로파일링 중에는 62.8ms / 34.2 GFLOP/s 로
+> 찍혔다. 둘 다 그 커널의 성능이 아니다.
+
 `ncu`는 CUDA 툴킷에 함께 들어 있다. **따로 설치할 필요가 없다.**
 버전이 찍히면 준비가 끝난 것이다. 오류가 나면 7절로 간다.
 
@@ -129,6 +138,27 @@ sm__warps_active.avg.pct_of_peak_sustained_active \
 | naive | 4096 | | | |
 | tiled | 4096 | | | |
 
+## 자리에 따라 숫자가 다르다
+
+실습실에는 **RTX 4060 Ti 와 RTX 5060 두 기종이 섞여 있다.** 같은 커널인데도
+자리에 따라 값이 이만큼 다르다.
+
+| metric | RTX 4060 Ti | RTX 5060 |
+|---|---|---|
+| naive N=1024 DRAM | 1.76% | 0.95% |
+| naive N=4096 DRAM | 45.74% | 30.88% |
+| tiled N=4096 DRAM | 72.37% | 44.43% |
+| naive SM | 89.49% | 89.78% |
+| tiled SM | 96.26% | 97.07% |
+
+**SM 사용률은 두 카드가 거의 같은데 DRAM 만 크게 다르다.**
+두 카드의 메모리 대역폭이 288 GB/s 와 448 GB/s 로 다르기 때문이다.
+같은 양을 옮겨도 대역폭이 넓은 쪽은 한계 대비 비율이 낮게 나온다.
+자기 자리 값을 적고, 옆자리와 기종이 다르면 비교해 보라.
+
+> 위 표와 3~4절의 예시 출력은 서로 다른 실행에서 얻은 것이라 소수점 아래가
+> 조금씩 다르다. 같은 카드에서도 실행마다 그 정도는 흔들린다.
+
 ## 무엇이 사용률을 밀어 올렸는지 쪼개 본다
 
 세 지표만으로는 `sm__throughput`이 왜 높은지 알 수 없다. 요약 화면을 한 번 본다.
@@ -136,6 +166,15 @@ sm__warps_active.avg.pct_of_peak_sustained_active \
 ```
 ncu --set basic ./matmul 1024 16
 ```
+
+> **프로파일링 중 프로그램이 출력하는 시간과 GFLOP/s 는 계측 오버헤드가
+> 포함된 값이다. 성능 수치는 프로파일러 없이 잰 것(lab06 결과)을 쓴다.
+> 여기서 볼 것은 metric 값이다.**
+>
+> `ncu` 는 카운터를 모으려고 커널을 여러 번 다시 실행한다. 그래서 프로그램이
+> 스스로 잰 시간이 30배까지 부풀어 찍힌다. 실제로 lab06 에서 118ms /
+> 1164 GFLOP/s 로 나오던 커널이 프로파일링 중에는 62.8ms / 34.2 GFLOP/s 로
+> 찍혔다. 둘 다 그 커널의 성능이 아니다.
 
 `GPU Speed Of Light Throughput` 절에 이런 줄들이 있다.
 
@@ -182,26 +221,69 @@ occupancy가 성능에 대해 무엇을 말해 주고 무엇을 말해 주지 �
 
 ## 7. 문제 해결
 
-## `ERR_NVGPUCTRPERM`
+## 프로파일링이 안 될 때 — 먼저 읽을 것
+
+**도구가 안 되어도 이 랩은 끝까지 진행된다.** 아래 5번을 보라.
+표를 채우지 못한 채로 멈추지 말 것.
+
+실습실에서 실제로 관찰된 오류는 세 가지다.
 
 ```
 ==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access
 NVIDIA GPU Performance Counters on the target device.
 ```
 
-성능 카운터는 기본적으로 관리자만 읽을 수 있다. **실습실 PC는 모든 사용자가
-접근하도록 이미 설정되어 있으므로 이 오류가 나지 않아야 한다.** 났다면 조교에게
-알려라.
+```
+==ERROR== The application returned an error code (9).
+... libcuda.so stub ...
+```
 
-개인 PC에서 돌린다면 직접 풀어야 한다.
+```
+==ERROR== GPU access blocked by the operating system
+```
+
+셋 다 원인이 같은 경우가 많다. WSL 환경 변수가 빠져서 진짜 드라이버 대신
+스텁 라이브러리를 잡은 것이다. 아래 순서대로 해 본다.
+
+**1) 환경 변수를 먼저 맞춘다.** 대부분 여기서 풀린다.
+
+```
+export PATH=/usr/lib/wsl/lib:$PATH
+export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
+```
+
+**2) `nvidia-utils` 를 설치하지 말 것.**
+
+`apt` 가 `sudo apt install nvidia-utils-...` 를 설치하라고 제안하는 경우가
+있는데, **따르지 마라.** WSL 은 Windows 쪽 드라이버를 그대로 쓴다.
+리눅스용 드라이버 패키지를 얹으면 그 연결이 끊어져 `nvidia-smi` 조차
+안 되는 상태가 된다. 복구가 번거롭다.
+
+**3) 한 번 더 실행해 본다.**
+
+다른 프로세스가 잠깐 GPU 를 잡고 있었을 수 있다. 카운터는 한 번에 한
+프로세스만 쓸 수 있어서, 일시적 경합이면 다시 하면 된다.
+
+**4) 그래도 안 되면 `sample-output.txt` 로 표를 채운다.**
+
+이 파일에 전체 출력이 들어 있다. 거기서 값을 읽어 5절 표를 채우고,
+6절 토론 문제도 그대로 답한다. **랩은 계속 진행된다.**
+보고서에 "도구가 실행되지 않아 sample-output.txt 를 사용했다"고 한 줄 적으면 된다.
+
+**5) 조교에게 알린다.**
+
+같은 증상이면 다른 PC 도 같은 상태일 가능성이 높다. 자리 번호와 오류
+메시지를 함께 알려 주면 한 번에 처리할 수 있다.
+
+## 개인 PC 에서 돌린다면
 
 - **Windows** — NVIDIA 제어판 → 데스크톱 → 개발자 설정 사용 →
   "개발자 설정 관리" → *Enable NVIDIA GPU performance counters for all users*.
   설정 후 재부팅한다.
-- **Linux / WSL2** — `/etc/modprobe.d/`에 `NVreg_RestrictProfilingToAdminUsers=0`
-  옵션을 넣고 재부팅하거나, `sudo ncu ...`로 실행한다.
-
-자세한 것은 오류 메시지에 함께 나오는 NVIDIA 문서 링크를 따라가면 된다.
+- **Linux** — `/etc/modprobe.d/` 에 `NVreg_RestrictProfilingToAdminUsers=0`
+  옵션을 넣고 재부팅하거나 `sudo ncu ...` 로 실행한다.
+- **WSL2** — 리눅스 쪽에는 nvidia 커널 모듈이 없다. 위 Windows 항목을
+  따라야 하고, `sudo` 로는 풀리지 않는다.
 
 ## 커널 이름이 안 잡힌다
 

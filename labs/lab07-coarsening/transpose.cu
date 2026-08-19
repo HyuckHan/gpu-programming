@@ -71,6 +71,13 @@ __global__ void transpose_tiled_kernel(float* in, float* out, unsigned int N) {
 // 한 번만 재면 실행마다 값이 눈에 띄게 흔들린다.
 #define NUM_ITERS 20
 
+// 그 평균을 다시 MEASURE_RUNS 번 재고 그중 가장 빠른 것을 쓴다.
+// 평균은 실행마다의 잔떨림을 없애 주지만, GPU 가 뜨거워져 클럭이 내려간
+// 구간에 걸리면 그 구간을 그대로 평균에 담는다. 방해는 시간을 늘리기만
+// 하므로 가장 빠른 회차를 고르면 방해받지 않은 실행을 고르는 셈이 된다.
+// lab04 divergence.cu 와 같은 방식이다.
+#define MEASURE_RUNS 3
+
 // 기준선 naive 의 블록 모양. TILE_DIM 을 바꿔도 이 값은 고정이다.
 // 기준선까지 같이 흔들리면 배속이라는 숫자를 해석할 수 없다.
 // x 를 32 로 두는 것은 워프 하나가 가로로 32칸을 덮게 하려는 것이다.
@@ -159,7 +166,8 @@ int main(int argc, char** argv) {
     } else {
         printf("N = %u  (입력 %.1f MB + 출력 %.1f MB = %.1f MB)\n", N, MB, MB, 2*MB);
     }
-    printf("TILE_DIM = %u,  반복 %d회 평균\n", TILE_DIM, NUM_ITERS);
+    printf("TILE_DIM = %u,  커널마다 예열 1회 뒤 %d회 측정(각 %d회 평균), 그중 가장 빠른 값을 쓴다.\n",
+           TILE_DIM, MEASURE_RUNS, NUM_ITERS);
 
     float* in  = (float*)malloc(bytes);
     float* out = (float*)malloc(bytes);
@@ -183,9 +191,13 @@ int main(int argc, char** argv) {
         launch;                                                               \
         CUDA_CHECK(cudaGetLastError());                                       \
         CUDA_CHECK(cudaDeviceSynchronize());                                  \
-        timer.start();                                                        \
-        for (int it_ = 0; it_ < NUM_ITERS; ++it_) { launch; }                 \
-        (ms_out) = timer.stop()/NUM_ITERS;                                    \
+        (ms_out) = 0.0f;                                                      \
+        for (int r_ = 0; r_ < MEASURE_RUNS; ++r_) {                           \
+            timer.start();                                                    \
+            for (int it_ = 0; it_ < NUM_ITERS; ++it_) { launch; }             \
+            float ms_ = timer.stop()/NUM_ITERS;                               \
+            if (r_ == 0 || ms_ < (ms_out)) (ms_out) = ms_;                    \
+        }                                                                     \
         CUDA_CHECK(cudaMemcpy(out, out_d, bytes, cudaMemcpyDeviceToHost));    \
         ok = compare_float(ref, out, count, 1e-6f) && ok;                     \
     } while (0)
