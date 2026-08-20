@@ -18,7 +18,7 @@ make hello && ./hello
 
 | 단계 | 명령 | 실패하면 확인할 것 |
 |---|---|---|
-| 1 | 실습실 PC 로그인 | 본인 계정으로 로그인했는가. 원격 접속이라면 GPU가 없는 서버일 수 있다 |
+| 1 | 실습실 PC 로그인 && WSL-Ubuntu 실행| 실행 아이콘 못 찾으면 손을 든다 |
 | 2 | `nvidia-smi` | 표가 안 나오면 드라이버 문제다. 재부팅 한 번, 그래도 안 되면 손을 든다 |
 | 3 | `nvcc --version` | `command not found` 면 PATH 문제다. `/usr/local/cuda/bin` 이 PATH에 있는가 |
 | 4 | `make hello` | 컴파일 오류가 나면 3단계로 돌아간다 |
